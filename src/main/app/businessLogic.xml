@@ -1,0 +1,206 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mule xmlns:json="http://www.mulesoft.org/schema/mule/json" 
+xmlns:batch="http://www.mulesoft.org/schema/mule/batch" 
+xmlns:netsuite="http://www.mulesoft.org/schema/mule/netsuite" version="EE-3.6.1" 
+    xmlns="http://www.mulesoft.org/schema/mule/core" 
+    xmlns:data-mapper="http://www.mulesoft.org/schema/mule/ee/data-mapper" 
+    xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" 
+    xmlns:sfdc="http://www.mulesoft.org/schema/mule/sfdc" 
+    xmlns:spring="http://www.springframework.org/schema/beans" 
+    xmlns:tracking="http://www.mulesoft.org/schema/mule/ee/tracking" 
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" 
+    xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-current.xsd
+http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/ee/tracking http://www.mulesoft.org/schema/mule/ee/tracking/current/mule-tracking-ee.xsd
+http://www.mulesoft.org/schema/mule/sfdc http://www.mulesoft.org/schema/mule/sfdc/current/mule-sfdc.xsd
+http://www.mulesoft.org/schema/mule/ee/data-mapper http://www.mulesoft.org/schema/mule/ee/data-mapper/current/mule-data-mapper.xsd
+http://www.mulesoft.org/schema/mule/netsuite http://www.mulesoft.org/schema/mule/netsuite/current/mule-netsuite.xsd
+http://www.mulesoft.org/schema/mule/batch http://www.mulesoft.org/schema/mule/batch/current/mule-batch.xsd
+http://www.mulesoft.org/schema/mule/json http://www.mulesoft.org/schema/mule/json/current/mule-json.xsd">
+
+    <data-mapper:config name="Map_To_CSV" transformationGraphPath="map_to_csv.grf" doc:name="Map_To_CSV"/>
+    <data-mapper:config name="NetSuite_to_SFDC_Opportunity" transformationGraphPath="netsuite_to_sfdc_opportunity.grf" doc:name="NetSuite_to_SFDC_Opportunity"/>
+    <data-mapper:config name="Map_To_Map" transformationGraphPath="map_to_map.grf" doc:name="Map_To_Map"/>
+    <batch:job name="migrateOpportunitiesBatch">
+        <batch:process-records>
+            <batch:step name="findCustomer">
+
+                <enricher source="#[payload]" target="#[recordVars['custInNetsuite']]" doc:name="store in custInNetsuite">
+                    <processor-chain doc:name="Processor Chain">
+                        <netsuite:get-record config-ref="Netsuite"  doc:name="query Customer in NetSuite">
+                            <netsuite:record-ref externalId="#[payload.Account.Id]" type="CUSTOMER"/>
+                        </netsuite:get-record>
+<!--                         <expression-component doc:name="Expression"><![CDATA[if (payload.hasNext()){
+	payload = payload.next();
+}
+else {
+	payload = null;
+}
+
+]]></expression-component>       -->              
+</processor-chain>
+                </enricher>
+                <logger message="Customer: #[recordVars.custInNetsuite]" level="INFO" doc:name="Logger"/>
+            </batch:step>
+            <batch:step name="prepareCustomerId">
+                <choice doc:name="doesCustomerExist">
+                    <when expression="#[recordVars.custInNetsuite instanceof NullPayload]">
+                        <enricher source="#[payload.getExternalId()]" target="#[recordVars['idOfCustomerInNetsuite']]" doc:name="store result in idOfCustomerInNetsuite">
+                            <processor-chain doc:name="Processor Chain">
+                                <expression-component doc:name="data to create Customer"><![CDATA[import java.util.HashMap;
+import com.netsuite.webservices.platform.core_2014_1.RecordRef;
+import com.netsuite.webservices.platform.core_2014_1.types.RecordType;
+
+ref = new RecordRef();
+ref.setType(RecordType.SUBSIDIARY);
+ref.setInternalId(${netsuite.subsidiaryId});
+
+payload = ["companyName":#[payload.Account.Name], "subsidiary": ref];
+
+//payload.put("companyName", "TestVeri");
+//payload.put("subsidiary", ref);
+
+//payload = map;]]></expression-component>
+                                <netsuite:add-record config-ref="Netsuite" recordType="CUSTOMER" doc:name="Netsuite">
+                                    <netsuite:attributes ref="#[payload]"/>
+                                </netsuite:add-record>
+                            </processor-chain>
+                        </enricher>
+                    </when>
+                    <otherwise>
+                        <batch:set-record-variable variableName="idOfCustomerInNetsuite" value="#[recordVars.custInNetsuite['externalId']]" doc:name="set idOfCustomerInNetsuite to existing value"/>
+                    </otherwise>
+                </choice>
+                <logger message="Customer ID: #[recordVars.idOfCustomerInNetsuite]" level="INFO" doc:name="Logger"/>
+<!--                 <choice doc:name="Choice"> -->
+
+                
+<!--                     <when expression="recordVars.custInNetsuite.hasNext() == false"> -->
+<!--                         <logger message="Customer was not found in NetSuite!" level="INFO" doc:name="Logger"/> -->
+<!--                     </when> -->
+<!--                     <otherwise> -->
+<!--                         <logger message="Customer was found in Netsuite! #[recordVars.custInNetsuite.next()]" level="INFO" doc:name="Logger"/> -->
+<!--                     </otherwise> -->
+<!--                 </choice> -->
+            </batch:step>
+            <batch:step name="createSalesOrderInNetsuite" accept-expression="!(payload is NullPayload)">
+                <enricher source="#[payload]" target="#[recordVars['products']]" doc:name="store in products">
+                    <processor-chain doc:name="Processor Chain">
+                        <sfdc:query config-ref="Salesforce" query="dsql:SELECT Description,Id,ListPrice,Name,ProductCode,Quantity,TotalPrice 
+FROM OpportunityLineItem
+WHERE OpportunityId = '#[payload.Id]'" doc:name="findOpportunityProducts"/>
+                        <expression-component doc:name="Expression"><![CDATA[// make it a list instead of iterator
+list = new java.util.ArrayList();
+while(payload.hasNext()) {
+	map = payload.next();
+	list.add(map);
+}
+payload = list;]]></expression-component>
+
+                    </processor-chain>
+                </enricher>
+                <enricher source="#[payload]" target="#[recordVars['itemsUpsertResult']]" doc:name="store to itemsUpsertResult">
+                    <processor-chain doc:name="Processor Chain">
+                        <expression-component doc:name="prepare data fto insert inventory items"><![CDATA[import com.netsuite.webservices.transactions.sales_2014_1.types.SalesOrderOrderStatus;
+import com.netsuite.webservices.transactions.sales_2014_1.types.TransactionStatus;
+import com.netsuite.webservices.platform.core_2014_1.RecordRef;
+import com.netsuite.webservices.platform.core_2014_1.types.RecordType;
+import com.netsuite.webservices.transactions.sales_2014_1.SalesOrderItem;
+import com.netsuite.webservices.transactions.sales_2014_1.SalesOrderItemList;
+import java.util.HashMap;
+import java.util.ArrayList;
+
+
+products = recordVars['products'];
+
+list = new ArrayList();
+for(product : products) {
+	map = new HashMap();
+
+	map.put("displayName", product['Name']);
+	map.put("itemId", product['ProductCode']);
+	map.put("cost", product['ListPrice']);
+	map.put("externalId",product['Id']);
+	list.add(map);
+}
+
+payload = list;
+
+
+]]></expression-component>
+                        <netsuite:upsert-list config-ref="Netsuite" recordType="INVENTORY_ITEM" doc:name="upsert inventoryItems">
+                            <netsuite:records ref="#[payload]"/>
+                        </netsuite:upsert-list>
+
+                    </processor-chain>
+                </enricher>
+                <expression-component doc:name="prepare data to insert Sales Order"><![CDATA[import com.netsuite.webservices.transactions.sales_2014_1.types.SalesOrderOrderStatus;
+import com.netsuite.webservices.platform.core_2014_1.RecordRef;
+import com.netsuite.webservices.platform.core_2014_1.types.RecordType;
+import com.netsuite.webservices.transactions.sales_2014_1.SalesOrderItem;
+import com.netsuite.webservices.transactions.sales_2014_1.SalesOrderItemList;
+import java.util.HashMap;
+import java.util.ArrayList;
+
+//list of all sales order items (products)
+list = new ArrayList();
+
+for (int i=0; i < recordVars['products'].size(); i++) {
+	productSFDC = recordVars['products'][i];
+	itemNS = recordVars['itemsUpsertResult'][i];
+
+	// inventory reference inside NetSuite - what we have in stock
+	itemRef = new RecordRef();
+	itemRef.setType(RecordType.INVENTORY_ITEM);
+	itemRef.setExternalId(itemNS.getWrapped().getBaseRef().getExternalId());
+
+	// what is part of Sales Order actually
+	soItem = new SalesOrderItem();
+	soItem.setItem(itemRef);
+	soItem.setQuantity(productSFDC['Quantity']);
+	list.add(soItem);
+}
+
+
+// reference to Inventory Item - fixed for now - still under development
+//itemRef = new RecordRef();
+//itemRef.setType(RecordType.INVENTORY_ITEM);
+//itemRef.setInternalId("694");
+
+//new sales order item
+//soItem = new SalesOrderItem();
+//soItem.setItem(itemRef);
+//soItem.setQuantity(1.0);
+
+itemList = new SalesOrderItemList();
+itemList.setItem(list);
+itemList.setReplaceAll(true);
+
+// customer reference
+ref = new RecordRef();
+ref.setType(RecordType.CUSTOMER);
+ref.setExternalId(recordVars['idOfCustomerInNetsuite']);
+
+map = new HashMap();
+map.put("entity", ref);
+map.put("itemList", itemList);
+map.put("orderStatus", SalesOrderOrderStatus.PENDING_FULFILLMENT);
+map.put("externalId", payload.Id);
+payload = map;
+]]></expression-component>
+
+                <netsuite:upsert-list config-ref="Netsuite" recordType="SALES_ORDER" doc:name="upsert Sales Order in Netsuite">
+                    <netsuite:records ref="#[payload]"/>
+
+                </netsuite:upsert-list>
+                <logger message="Upserted sales order with internal ID: #[payload.getInternalId()] " level="INFO" doc:name="log Upsert result"/>
+            </batch:step>
+        </batch:process-records>
+    </batch:job>
+    <flow doc:description="This flow is the entry point to the Kick business logic.  This flow should control the direction of the application, and it should be called by the different endpoints that your Kick exposes to trigger it." name="mainFlow" processingStrategy="synchronous">
+        <batch:execute name="migrateOpportunitiesBatch" doc:name="migrateOpportunitiesBatch"/>
+
+        <exception-strategy doc:name="Reference Exception Strategy" ref="defaultChoiceExceptionStrategy"/>
+    </flow>
+
+</mule>

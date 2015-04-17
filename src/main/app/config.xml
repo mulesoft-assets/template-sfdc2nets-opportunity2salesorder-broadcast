@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:http="http://www.mulesoft.org/schema/mule/http"
+	xmlns:smtp="http://www.mulesoft.org/schema/mule/smtp"
+xmlns:sfdc="http://www.mulesoft.org/schema/mule/sfdc"
+xmlns:netsuite="http://www.mulesoft.org/schema/mule/netsuite" 
+xmlns:context="http://www.springframework.org/schema/context" 
+xmlns="http://www.mulesoft.org/schema/mule/core" 
+xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" 
+xmlns:spring="http://www.springframework.org/schema/beans" version="EE-3.6.1" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" 
+xsi:schemaLocation="http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/smtp http://www.mulesoft.org/schema/mule/smtp/current/mule-smtp.xsd
+http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-current.xsd
+http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/sfdc http://www.mulesoft.org/schema/mule/sfdc/current/mule-sfdc.xsd
+http://www.mulesoft.org/schema/mule/netsuite http://www.mulesoft.org/schema/mule/netsuite/current/mule-netsuite.xsd
+http://www.springframework.org/schema/context http://www.springframework.org/schema/context/spring-context-current.xsd">
+	
+	<!-- This is the main configuration files, you should place here all the Connectors configuration an declarations -->
+
+    <context:property-placeholder location="common.properties, mule.${mule.env}.properties"/>
+    
+    <smtp:gmail-connector name="gmailConnector" doc:name="Gmail" validateConnections="true" doc:description="This is the connector used to send email notifications. You should change its configuration to select a different email provider" />
+
+    <sfdc:config name="Salesforce" username="${sfdc.username}" password="${sfdc.password}" securityToken="${sfdc.securityToken}" url="${sfdc.url}" doc:name="Salesforce" >
+        <sfdc:connection-pooling-profile initialisationPolicy="INITIALISE_ONE" exhaustedAction="WHEN_EXHAUSTED_GROW"/>
+        <reconnect count="3"/>
+    </sfdc:config>
+    
+    <netsuite:config name="Netsuite" email="${netsuite.email}" password="${netsuite.password}" account="${netsuite.account}" roleId="${netsuite.roleId}" receiveTimeout="300000" doc:name="Netsuite">
+        <reconnect-forever frequency="10000"/>
+    </netsuite:config>
+    
+    <http:listener-config name="HTTP" host="0.0.0.0" port="${http.port}" doc:name="HTTP"/>
+
+</mule>
