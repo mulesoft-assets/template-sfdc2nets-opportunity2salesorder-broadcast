@@ -24,20 +24,22 @@ http://www.mulesoft.org/schema/mule/json http://www.mulesoft.org/schema/mule/jso
     <batch:job name="migrateOpportunitiesBatch">
         <batch:process-records>
             <batch:step name="findCustomer">
+                <logger message="Input Opportunity: #[payload]" level="INFO" doc:name="Logger"/>
 
                 <enricher source="#[payload]" target="#[recordVars['custInNetsuite']]" doc:name="store in custInNetsuite">
                     <processor-chain doc:name="Processor Chain">
-                        <netsuite:get-record config-ref="Netsuite"  doc:name="query Customer in NetSuite">
-                            <netsuite:record-ref externalId="#[payload.Account.Id]" type="CUSTOMER"/>
-                        </netsuite:get-record>
-<!--                         <expression-component doc:name="Expression"><![CDATA[if (payload.hasNext()){
+                        <netsuite:query-records config-ref="Netsuite"  doc:name="query Customer in NetSuite" query="dsql:SELECT internalId, externalId, companyName
+FROM CUSTOMER
+WHERE externalId = #[payload.Account.Id]">
+                        </netsuite:query-records>
+                         <expression-component doc:name="extract the map object"><![CDATA[if (payload.hasNext()){
 	payload = payload.next();
 }
 else {
 	payload = null;
 }
 
-]]></expression-component>       -->              
+]]></expression-component>                
 </processor-chain>
                 </enricher>
                 <logger message="Customer: #[recordVars.custInNetsuite]" level="INFO" doc:name="Logger"/>
@@ -55,12 +57,14 @@ ref = new RecordRef();
 ref.setType(RecordType.SUBSIDIARY);
 ref.setInternalId(${netsuite.subsidiaryId});
 
-payload = ["companyName":#[payload.Account.Name], "subsidiary": ref];
+map = new HashMap();
+map.put("companyName", payload['Account']['Name']);
+map.put("externalId", payload['Account']['Id']);
+map.put("phone", payload['Account']['Phone']);
+map.put("fax", payload['Account']['Fax']);
+map.put("subsidiary", ref);
 
-//payload.put("companyName", "TestVeri");
-//payload.put("subsidiary", ref);
-
-//payload = map;]]></expression-component>
+payload = map;]]></expression-component>
                                 <netsuite:add-record config-ref="Netsuite" recordType="CUSTOMER" doc:name="Netsuite">
                                     <netsuite:attributes ref="#[payload]"/>
                                 </netsuite:add-record>
@@ -83,57 +87,79 @@ payload = ["companyName":#[payload.Account.Name], "subsidiary": ref];
 <!--                     </otherwise> -->
 <!--                 </choice> -->
             </batch:step>
-            <batch:step name="createSalesOrderInNetsuite" accept-expression="!(payload is NullPayload)">
+            <batch:step name="upsertInventoryItems">
                 <enricher source="#[payload]" target="#[recordVars['products']]" doc:name="store in products">
                     <processor-chain doc:name="Processor Chain">
-                        <sfdc:query config-ref="Salesforce" query="dsql:SELECT Description,Id,ListPrice,Name,ProductCode,Quantity,TotalPrice 
+                        <sfdc:query config-ref="Salesforce" query="dsql:SELECT Description,Id,ListPrice,Name,ProductCode,Quantity,TotalPrice,Product2Id 
 FROM OpportunityLineItem
 WHERE OpportunityId = '#[payload.Id]'" doc:name="findOpportunityProducts"/>
                         <expression-component doc:name="Expression"><![CDATA[// make it a list instead of iterator
 list = new java.util.ArrayList();
+
 while(payload.hasNext()) {
 	map = payload.next();
 	list.add(map);
 }
 payload = list;]]></expression-component>
-
                     </processor-chain>
                 </enricher>
+                <logger message="Products: #[recordVars.products]" level="INFO" doc:name="Logger"/>
                 <enricher source="#[payload]" target="#[recordVars['itemsUpsertResult']]" doc:name="store to itemsUpsertResult">
                     <processor-chain doc:name="Processor Chain">
-                        <expression-component doc:name="prepare data fto insert inventory items"><![CDATA[import com.netsuite.webservices.transactions.sales_2014_1.types.SalesOrderOrderStatus;
-import com.netsuite.webservices.transactions.sales_2014_1.types.TransactionStatus;
+                        <expression-component doc:name="prepare data to insert inventory items"><![CDATA[import java.util.HashMap;
+import java.util.ArrayList;
+import com.netsuite.webservices.platform.core_2014_1.RecordRefList;
 import com.netsuite.webservices.platform.core_2014_1.RecordRef;
 import com.netsuite.webservices.platform.core_2014_1.types.RecordType;
-import com.netsuite.webservices.transactions.sales_2014_1.SalesOrderItem;
-import com.netsuite.webservices.transactions.sales_2014_1.SalesOrderItemList;
-import java.util.HashMap;
-import java.util.ArrayList;
-
 
 products = recordVars['products'];
+itemList = new ArrayList();
 
-list = new ArrayList();
 for(product : products) {
-	map = new HashMap();
+	subList = new ArrayList();
 
-	map.put("displayName", product['Name']);
+	// reference to subsidiary
+	ref = new RecordRef();
+	ref.setType(RecordType.SUBSIDIARY);
+	ref.setInternalId(${netsuite.subsidiaryId});
+	subList.add(ref);
+
+   // reference to location
+
+//locRef = new RecordRef();
+//	locRef.setType(RecordType.LOCATION);
+//locRef.setInternalId(${netsuite.locationId});
+//	locList = new ArrayList();
+//	locList.add(locRef);
+
+	// subsidiaryList - contains list of references to subsidiaries
+	subsidiaryList = new RecordRefList();
+	subsidiaryList.setRecordRef(subList);
+	
+	map = new HashMap();
+	map.put("displayName", product['Name'].replace(payload['Name'] + " ", ""));
 	map.put("itemId", product['ProductCode']);
 	map.put("cost", product['ListPrice']);
-	map.put("externalId",product['Id']);
-	list.add(map);
+	map.put("externalId",product['Product2Id']);    // id of Product, not OpportunityProduct
+	map.put("subsidiaryList", subsidiaryList);
+	map.put("quantityAvailable", product['Quantity']);
+    map.put("pricesIncludeTax", new Boolean(true));
+    //map.put("location", locRef);
+	itemList.add(map);
 }
 
-payload = list;
+payload = itemList;
 
 
 ]]></expression-component>
                         <netsuite:upsert-list config-ref="Netsuite" recordType="INVENTORY_ITEM" doc:name="upsert inventoryItems">
                             <netsuite:records ref="#[payload]"/>
                         </netsuite:upsert-list>
-
                     </processor-chain>
                 </enricher>
+            </batch:step>
+            <batch:step name="createSalesOrderInNetsuite" accept-expression="!(payload is NullPayload)">
+
                 <expression-component doc:name="prepare data to insert Sales Order"><![CDATA[import com.netsuite.webservices.transactions.sales_2014_1.types.SalesOrderOrderStatus;
 import com.netsuite.webservices.platform.core_2014_1.RecordRef;
 import com.netsuite.webservices.platform.core_2014_1.types.RecordType;
@@ -143,11 +169,11 @@ import java.util.HashMap;
 import java.util.ArrayList;
 
 //list of all sales order items (products)
-list = new ArrayList();
+salesOrderItemList = new ArrayList();
 
 for (int i=0; i < recordVars['products'].size(); i++) {
 	productSFDC = recordVars['products'][i];
-	itemNS = recordVars['itemsUpsertResult'][i];
+	itemNS = recordVars['itemsUpsertResult'][i]; 
 
 	// inventory reference inside NetSuite - what we have in stock
 	itemRef = new RecordRef();
@@ -157,8 +183,9 @@ for (int i=0; i < recordVars['products'].size(); i++) {
 	// what is part of Sales Order actually
 	soItem = new SalesOrderItem();
 	soItem.setItem(itemRef);
-	soItem.setQuantity(productSFDC['Quantity']);
-	list.add(soItem);
+    soItem.setQuantity(productSFDC['Quantity']);
+   // soItem.setAmount(productSFDC['ListPrice']);
+	salesOrderItemList.add(soItem);
 }
 
 
@@ -171,9 +198,12 @@ for (int i=0; i < recordVars['products'].size(); i++) {
 //soItem = new SalesOrderItem();
 //soItem.setItem(itemRef);
 //soItem.setQuantity(1.0);
+//list.add(soItem);
+
+//-----------------------------------------
 
 itemList = new SalesOrderItemList();
-itemList.setItem(list);
+itemList.setItem(salesOrderItemList);
 itemList.setReplaceAll(true);
 
 // customer reference
@@ -182,17 +212,18 @@ ref.setType(RecordType.CUSTOMER);
 ref.setExternalId(recordVars['idOfCustomerInNetsuite']);
 
 map = new HashMap();
-map.put("entity", ref);
-map.put("itemList", itemList);
+map.put("entity", ref); // customer reference
+map.put("itemList", itemList); // list of sales order items
 map.put("orderStatus", SalesOrderOrderStatus.PENDING_FULFILLMENT);
-map.put("externalId", payload.Id);
+map.put("externalId", payload['Id']); // ID of salesforce opportunity
 payload = map;
 ]]></expression-component>
 
-                <netsuite:upsert-list config-ref="Netsuite" recordType="SALES_ORDER" doc:name="upsert Sales Order in Netsuite">
-                    <netsuite:records ref="#[payload]"/>
+                <netsuite:upsert-record config-ref="Netsuite" recordType="SALES_ORDER" doc:name="upsert Sales Order in Netsuite">
 
-                </netsuite:upsert-list>
+
+
+                </netsuite:upsert-record>
                 <logger message="Upserted sales order with internal ID: #[payload.getInternalId()] " level="INFO" doc:name="log Upsert result"/>
             </batch:step>
         </batch:process-records>

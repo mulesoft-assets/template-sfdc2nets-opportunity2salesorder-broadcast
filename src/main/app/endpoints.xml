@@ -22,16 +22,17 @@ http://www.mulesoft.org/schema/mule/netsuite http://www.mulesoft.org/schema/mule
 http://www.mulesoft.org/schema/mule/json http://www.mulesoft.org/schema/mule/json/current/mule-json.xsd">
     
    
-    <flow name="triggerFlow" processingStrategy="synchronous">
+<!--     <flow name="triggerFlowHTTP" processingStrategy="synchronous"> 
         <http:listener config-ref="HTTP" path="/migrateopp" doc:name="HTTP"/>
         <sfdc:query config-ref="Salesforce" query="dsql:SELECT LastModifiedDate, Name, Id, HasOpportunityLineItem, Amount, StageName, Probability, CloseDate, Type, Account.Id, Account.Name,  Account.Description, Account.Fax, Account.Industry, Account.NumberOfEmployees, Account.Phone, Account.Type, Account.Website
 FROM Opportunity 
 WHERE Name = 'Veri Test Opportunity' AND StageName = 'Closed Won' AND HasOpportunityLineItem = true" doc:name="get Opportunities including Account info"/>
-<!--         <sfdc:query config-ref="Salesforce" query="dsql:SELECT LastModifiedDate, Name, Amount, StageName, Probability, CloseDate, Type, Account.Id, Account.Name, Account.AccountNumber, Account.AccountSource, Account.AnnualRevenue, Account.BillingCity, Account.BillingCountry, Account.BillingPostalCode, Account.BillingState, Account.BillingStreet, Account.Description, Account.Fax, Account.Industry, Account.NumberOfEmployees, Account.Ownership, Account.ParentId, Account.Phone, Account.Rating, Account.ShippingCity, Account.ShippingCountry, Account.ShippingPostalCode, Account.ShippingState, Account.ShippingStreet, Account.Sic, Account.SicDesc, Account.Site, Account.TickerSymbol, Account.Type, Account.Website  -->
-<!-- FROM Opportunity  -->
-<!-- WHERE Name = '0062000000bOHiiAAG'" doc:name="get Opportunities"/> -->
-<!--         <logger message="Loaded from SFDC: #[payload]" level="INFO" doc:name="Logger"/> -->
+         <sfdc:query config-ref="Salesforce" query="dsql:SELECT LastModifiedDate, Name, Amount, StageName, Probability, CloseDate, Type, Account.Id, Account.Name, Account.AccountNumber, Account.AccountSource, Account.AnnualRevenue, Account.BillingCity, Account.BillingCountry, Account.BillingPostalCode, Account.BillingState, Account.BillingStreet, Account.Description, Account.Fax, Account.Industry, Account.NumberOfEmployees, Account.Ownership, Account.ParentId, Account.Phone, Account.Rating, Account.ShippingCity, Account.ShippingCountry, Account.ShippingPostalCode, Account.ShippingState, Account.ShippingStreet, Account.Sic, Account.SicDesc, Account.Site, Account.TickerSymbol, Account.Type, Account.Website
+ FROM Opportunity 
+ WHERE Name = '0062000000bOHiiAAG'" doc:name="get Opportunities"/>
+         <logger message="Loaded from SFDC: #[payload]" level="INFO" doc:name="Logger"/>
         <flow-ref name="mainFlow" doc:name="mainFlow" doc:description="mainFlow"/>
+        <set-payload value="Batch has started: #[new Date().toString()]" doc:name="Set Payload"/>
     </flow>
     <flow name="createCustomerTest">
         <http:listener config-ref="HTTP" path="/createCustomer" doc:name="HTTP"/>
@@ -129,7 +130,28 @@ payload = map;
         <json:object-to-json-transformer doc:name="Object to JSON"/>
         <logger message="Created inventory Item: #[payload]" level="INFO" doc:name="Logger"/>
     </flow>
-
+    <flow name="getInventoryItem">
+        <http:listener config-ref="HTTP" path="/getItem" doc:name="HTTP"/>
+        <netsuite:get-record config-ref="Netsuite" doc:name="Netsuite">
+            <netsuite:record-ref internalId="694" type="INVENTORY_ITEM"/>
+        </netsuite:get-record>
+        <json:object-to-json-transformer doc:name="Object to JSON"/>
+        <logger message="#[payload]" level="INFO" doc:name="Logger"/>
+    </flow>
+    
+    -->
+    <flow name="triggerFlow" processingStrategy="synchronous">
+        <poll doc:name="Poll">
+            <fixed-frequency-scheduler frequency="${poll.frequencyMillis}" startDelay="${poll.startDelayMillis}"/>
+            <watermark variable="lastQueryDate" default-expression="${watermark.default.expression}" selector="MAX" selector-expression="#[payload.LastModifiedDate]"/>
+            <sfdc:query config-ref="Salesforce" query="dsql:SELECT LastModifiedDate, Name, Id, HasOpportunityLineItem, Amount, StageName, Probability, CloseDate, Type, Account.Id, Account.Name,  Account.Description, Account.Fax, Account.Industry, Account.NumberOfEmployees, Account.Phone, Account.Type, Account.Website
+FROM Opportunity 
+WHERE StageName = 'Closed Won' AND HasOpportunityLineItem = true AND Amount &gt;= 100000 AND Account.Id &lt;&gt; null AND LastModifiedDate &gt; #[flowVars.lastQueryDate]" doc:name="Query SalesForce for Opportunities including Account info" fetchSize="${page.size}"/>
+        </poll>
+        <logger message="Retrieved new data from SalesForce..." level="INFO" doc:name="Logger"/>
+        <flow-ref name="mainFlow" doc:name="mainFlow"/>
+    </flow>
+    
 	<!-- 	In this file you should declare all your inbound endpoints and from here controll the access to your application -->
 
 

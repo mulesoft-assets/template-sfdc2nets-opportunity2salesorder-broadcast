@@ -1,131 +1,85 @@
 <?xml version="1.0"?>
 <configuration>
 	<placeholders>
-		<placeholder id="template_name">Salesforce to Netsuite Opportunity Aggregation</placeholder>
+		<placeholder id="template_name">Salesforce Opportunity to Netsuite Sales Order Broadcast</placeholder>
 	</placeholders>
 	<sections>
 		<section id="use_case">
-As an administrator I want to aggregate opportunities from Salesforce and NetSuite instances and compare them to see which opportunities can only be found in one of the two and which opportunities are in both instances. 
+As a Salesforce admin I want to synchronize Closed Won Opportunities from SalesForce to Netsuite system as Sales Order object.
 
-For practical purposes this Template will generate the result in the format of an e-mail with attached CSV Report.
+This Template should serve as a foundation for setting an online sync of opportunities from SalesForce instance to NetSuite as Sales Order. Every time there is a new opportunity or a change in an already existing one, the integration will poll for changes in SalesForce instance and it will be responsible for updating the Sales Order in NetSuite.
 
-This Template should serve as a foundation for extracting data from two systems, aggregating data, comparing values of fields for the objects, and generating a report on the differences. 
+Requirements have been set not only to be used as examples, but also to establish a starting point to adapt your integration to your requirements.
 
-This implementation retrieves opportunities from both Salesforce and Netsuite instances, compares them (opportunities match if `externalId` of NetSuite Opportunity is the same as `Id` of SalesForce Opportunity), and generates a CSV file which shows opportunities in Salesforce, opportunities in NetSuite, and opportunities present in both systems. The report is then sent to a configured group of e-mail addresses.
+As implemented, this Anypoint Template leverage the [Batch Module](http://www.mulesoft.org/documentation/display/current/Batch+Processing) 
+
+The batch job is divided into *Input*, *Process* and *On Complete* stages.
+The integration is triggered by a poll defined in the flow that is going to trigger the application, querying newest SalesForce updates/creations matching a filter criteria and executing the batch job.
+In the *Process* phase, the Customer corresponding to the source Opportunity's Account will be searched for in NetSuite. If the Customer does not exist in NetSuite, it will be created in the next step. Otherwise the existing ID will be used. 
+Then all the products (Opportunity Line Items) associated with the Opportunity are searched for and inserted into NetSuite as InventoryLineItems.
+Last step upserts the Sales Order object referencing the Customer and Items created/updated in previous steps.
+
+Finally during the On Complete stage the Anypoint Template will log output statistics data into the console.
 		</section>
 		<section id="considerations">
 <![CDATA[
-To make this Anypoint Template run, there are certain preconditions that must be considered. All of them deal with the preparations in both systems, that must be made in order for all to run smoothly. **Failling to do so could lead to unexpected behavior of the template.**
-]]>
-		</section>
-		
-		<section id="default_nets_preconditions">
-<![CDATA[
-NetSuite does not allow concurrent API calls from the same account. Therefore, the NetSuite connector is configured to reconnect every 10 seconds until successful.
-]]>
-		</section>
-		
-		<section id="running_on_cloudhub">
-<![CDATA[
-Once your app is all set up and started, supposing you choose as domain name `sfdc2netsuite-opportunity-aggregation` to trigger the use case, you just need to hit `http://sfdc2netsuite-opportunity-aggregation.cloudhub.io/generatereport` and report will be sent to the e-mails configured.
+To make this Anypoint Template run, there are certain preconditions that must be considered. All of them deal with the preparations in both source and destination systems, that must be made in order for all to run smoothly. **Failling to do so could lead to unexpected behavior of the template.**
 ]]>
 		</section>
 		<section id="running_on_standalone">
 <![CDATA[
-After this, to trigger the use case you just need to hit the local HTTP endpoint with the port you configured in your file. If this is, for instance, `9090` then you should hit: `http://localhost:9090/generatereport` and this will create a CSV report and send it to the configured e-mail addresses.
+After this, to trigger the use case you just need to hit the local http endpoint with the port you configured in your file. If this is, for instance, `9090` then you should hit: `http://localhost:9090/migrateopportunities` and this will create a CSV report and send it to the mails set.
+]]>
+		</section>
+		<section id="running_on_cloudhub">
+<![CDATA[
+Once your app is all set up and started, there is no need to do anything else. Every time a opportunity is created or modified, it will be automatically synchronised to Netsuite as long as it is 'Closed Won' and has products associated.
 ]]>
 		</section>
 		<section id="application_configuration">
 		<![CDATA[
-+ http.port `9090` 
++ poll.frequencyMillis `60000`
++ poll.startDelayMillis `0`
++ watermark.defaultExpression `YESTERDAY`
+
 
 #### SalesForce Connector configuration
++ sfdc.a.username `bob.dylan@orga`
++ sfdc.a.password `DylanPassword123`
++ sfdc.a.securityToken `avsfwCUl7apQs56Xq2AKi3X`
++ sfdc.a.url `https://login.salesforce.com/services/Soap/u/31.0`
 
-+ sfdc.username `bob.dylan@orga`
-+ sfdc.password `DylanPassword123`
-+ sfdc.securityToken `avsfwCUl7apQs56Xq2AKi3X`
-+ sfdc.url `https://login.salesforce.com/services/Soap/u/26.0`
-
-#### NetSuite Connector configuration
-
+#### SalesForce Connector configuration
 + netsuite.email `email@example.com`
-+ netsuite.password `netsuite_password`
-+ netsuite.account `netsuite_account`
-+ netsuite.roleId `1`
-
-#### SMTP Services configuration
-
-+ smtp.host `smtp.gmail.com`
-+ smtp.port `587`
-+ smtp.user `exampleuser@gmail.com`
-+ smtp.password `ExamplePassword456`
-
-#### Mail details
-
-+ mail.from `exampleuser@gmail.com`
-+ mail.to `woody.guthrie@gmail.com`
-+ mail.subject `Opportunities Report`
-+ mail.body `Please find attached your Opportunities Report`
-+ attachment.name `opportunities_report`
++ netsuite.password `password`
++ netsuite.account `TSTDRVxxxxxxx`
++ netsuite.roleId `3`  
++ netsuite.subsidiaryId=1
++ netsuite.locationId=2
 ]]>
 		</section>
 		<section id="api_calls">
 		<![CDATA[
-<!-- Salesforce imposes limits on the number of API Calls that can be made. Therefore calculating this amount may be an important factor to consider. The template calls to the API can be calculated using the formula: -->
+Salesforce imposes limits on the number of API Calls that can be made. Therefore calculating this amount may be an important factor to consider. The Anypoint Template calls to the API can be calculated using the formula:
 
-<!-- ***1 + X + X / 200*** -->
+***1 + X ***
 
-<!-- Being ***X*** the number of Opportunities to be synchronized on each run.  -->
+Being ***X*** the number of Opportunities to be synchronized on each run. 
 
-<!-- The division by ***200*** is because, by default, Opportunities are gathered in groups of 200 for each Upsert API Call in the commit step. Also consider that this calls are executed repeatedly every polling cycle.	 -->
-
-<!-- For instance if 10 records are fetched from origin instance, then 12 api calls will be made (1 + 10 + 1). -->
-<!-- ]]> -->
-		</section>
-		<section id="default_endpoints_xml">
-		<![CDATA[
-This is the file where you will find the inbound and outbound sides of your integration app. This Template has an HTTP Connector as the way to trigger the use case and an SMTP Transport as the outbound way to send the report.
-
-$H$H# Trigger Flow
-**HTTP Connector** - Start Report Generation
-+ `${http.port}` is set as a property to be defined either on a property file or in CloudHub environment variables.
-+ The path configured by default is `generatereport` and you are free to change for the one you prefer.
-+ The host name for all endpoints in your CloudHub configuration should be defined as `localhost`. CloudHub will then route requests from your application domain URL to the endpoint.
-
-$H$H# Outbound Flow
-**SMTP Outbound Endpoint** - Send Mail
-+ Both SMTP configuration and the actual mail to be sent are defined in this endpoint.
-+ This flow is going to be invoked from the flow that does all the functional work: *mainFlow*, the same that is invoked from the Inbound Flow upon triggering of the HTTP Endpoint.
 ]]>
 		</section>
 		<section id="default_business_logic_xml">
 		<![CDATA[
-Functional aspect of the template is implemented in this XML file, directed by one flow responsible of conducting the aggregation of data, comparing records and finally formating the output, in this case a CSV report.
-The *mainFlow* organises the job in three different steps and finally invokes the *outboundFlow* which will deliver the report to the corresponding outbound endpoint.
-This flow has Exception Strategy which basically consists on invoking the *defaultChoiseExceptionStrategy* defined in *errorHandling.xml* file.
+Functional aspect of the Template is implemented on this XML, directed by one flow that will poll for SalesForce creations/updates. The severeal message processors constitute the actions that fully implement the logic of this Template:
 
-$H$H# Gather Data Flow
-Mainly consisting of two calls (Queries), one to SalesForce, the other one to NetSuite, and storing each response in the Invocation Variable named *opportunitiesFromSFDC* or *opportunitiesFromNetsuite* accordingly.
-
-$H$H# Aggregation Flow
-[Java Transformer](http://www.mulesoft.org/documentation/display/current/Java+Transformer+Reference) is responsible for aggregating the results from the SalesForce and NetSuite instances.
-Criteria and format applied:
-+ Transformer receives a Mule Message with the two Invocation variables *opportunitiesFromSFDC* and *opportunitiesFromNetsuite* to result in List of Maps with keys: **Name**, **IDInSFDC**, **AmountInSFDC**, **IDInNetsuite**, **AmountInNetsuite**, **extIDInNetsuite**.
-
-+ Opportunities will be matched by their IDs. A record in Netsuite matches SFDC record if its *externalId*  is the same as SFDC record *Id*.
-
-$H$H# Format Output Flow
-+ [Java Transformer](http://www.mulesoft.org/documentation/display/current/Java+Transformer+Reference) responsible for sorting the list of users in the following order:
-
-1. Opportunities only in SalesForce
-2. Opportunities only in NetSuite
-3. Opportunities in both SalesForce and NetSuite
-
-All records ordered alphabetically by name within each category.
-If you want to change this order then the *compare* method should be modified.
-
-+ CSV Report [DataMapper](http://www.mulesoft.org/documentation/display/current/Datamapper+User+Guide+and+Reference) transforming the List of Maps in CSV with headers **Name**, **IDInSFDC**, **AmountInSFDC**, **IDInNetsuite**, **AmountInNetsuite**, **extIDInNetsuite**.
-+ An [Object to string transformer](http://www.mulesoft.org/documentation/display/current/Transformers) is used to set the payload as String. 
+1. During the Input stage the Template will query the SalesForce isntance for existing opportunities that match the filter criteria.
+2. During the Process stage, each SFDC opportunity will be upserted to NetSuite system. Before this is possible, the template will query the NetSuite if Customer and the products exist and if not it makes sure these objects are created.
+Finally during the On Complete stage the Template will log batch statistics into the console.
+]]>
+		</section>
+		<section id="default_endpoints_xml">
+		<![CDATA[
+This is file is conformed by a Flow containing the Poll that will periodically query Salesforce for updated/created Opportunities that meet the defined criteria in the query. And then executing the batch job process with the query results.
 ]]>
 		</section>
 	</sections>
