@@ -21,7 +21,7 @@ http://www.mulesoft.org/schema/mule/json http://www.mulesoft.org/schema/mule/jso
     <data-mapper:config name="Map_To_CSV" transformationGraphPath="map_to_csv.grf" doc:name="Map_To_CSV"/>
     <data-mapper:config name="NetSuite_to_SFDC_Opportunity" transformationGraphPath="netsuite_to_sfdc_opportunity.grf" doc:name="NetSuite_to_SFDC_Opportunity"/>
     <data-mapper:config name="Map_To_Map" transformationGraphPath="map_to_map.grf" doc:name="Map_To_Map"/>
-    <batch:job name="migrateOpportunitiesBatch">
+    <batch:job name="syncOpportunitiesBatch">
         <batch:process-records>
             <batch:step name="findCustomer">
                 <logger message="Input Opportunity: #[payload]" level="INFO" doc:name="Logger"/>
@@ -65,9 +65,10 @@ map.put("fax", payload['Account']['Fax']);
 map.put("subsidiary", ref);
 
 payload = map;]]></expression-component>
-                                <netsuite:add-record config-ref="Netsuite" recordType="CUSTOMER" doc:name="Netsuite">
+                                <netsuite:add-record config-ref="Netsuite" recordType="CUSTOMER" doc:name="addCustomer">
                                     <netsuite:attributes ref="#[payload]"/>
                                 </netsuite:add-record>
+
                             </processor-chain>
                         </enricher>
                     </when>
@@ -124,14 +125,6 @@ for(product : products) {
 	ref.setInternalId(${netsuite.subsidiaryId});
 	subList.add(ref);
 
-   // reference to location
-
-//locRef = new RecordRef();
-//	locRef.setType(RecordType.LOCATION);
-//locRef.setInternalId(${netsuite.locationId});
-//	locList = new ArrayList();
-//	locList.add(locRef);
-
 	// subsidiaryList - contains list of references to subsidiaries
 	subsidiaryList = new RecordRefList();
 	subsidiaryList.setRecordRef(subList);
@@ -144,7 +137,6 @@ for(product : products) {
 	map.put("subsidiaryList", subsidiaryList);
 	map.put("quantityAvailable", product['Quantity']);
     map.put("pricesIncludeTax", new Boolean(true));
-    //map.put("location", locRef);
 	itemList.add(map);
 }
 
@@ -152,6 +144,7 @@ payload = itemList;
 
 
 ]]></expression-component>
+
                         <netsuite:upsert-list config-ref="Netsuite" recordType="INVENTORY_ITEM" doc:name="upsert inventoryItems">
                             <netsuite:records ref="#[payload]"/>
                         </netsuite:upsert-list>
@@ -184,21 +177,9 @@ for (int i=0; i < recordVars['products'].size(); i++) {
 	soItem = new SalesOrderItem();
 	soItem.setItem(itemRef);
     soItem.setQuantity(productSFDC['Quantity']);
-   // soItem.setAmount(productSFDC['ListPrice']);
+    soItem.setAmount(productSFDC['ListPrice']);
 	salesOrderItemList.add(soItem);
 }
-
-
-// reference to Inventory Item - fixed for now - still under development
-//itemRef = new RecordRef();
-//itemRef.setType(RecordType.INVENTORY_ITEM);
-//itemRef.setInternalId("694");
-
-//new sales order item
-//soItem = new SalesOrderItem();
-//soItem.setItem(itemRef);
-//soItem.setQuantity(1.0);
-//list.add(soItem);
 
 //-----------------------------------------
 
@@ -229,7 +210,7 @@ payload = map;
         </batch:process-records>
     </batch:job>
     <flow doc:description="This flow is the entry point to the Kick business logic.  This flow should control the direction of the application, and it should be called by the different endpoints that your Kick exposes to trigger it." name="mainFlow" processingStrategy="synchronous">
-        <batch:execute name="migrateOpportunitiesBatch" doc:name="migrateOpportunitiesBatch"/>
+        <batch:execute name="syncOpportunitiesBatch" doc:name="syncOpportunitiesBatch"/>
 
         <exception-strategy doc:name="Reference Exception Strategy" ref="defaultChoiceExceptionStrategy"/>
     </flow>
