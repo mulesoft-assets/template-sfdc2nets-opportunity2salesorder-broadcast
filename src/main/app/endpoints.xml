@@ -146,7 +146,7 @@ payload = map;
             <watermark variable="lastQueryDate" default-expression="${watermark.default.expression}" selector="MAX" selector-expression="#[payload.LastModifiedDate]"/>
             <sfdc:query config-ref="Salesforce" query="dsql:SELECT LastModifiedDate, Name, Id, HasOpportunityLineItem, Amount, StageName, Probability, CloseDate, Type, Account.Id, Account.Name,  Account.Description, Account.Fax, Account.Industry, Account.NumberOfEmployees, Account.Phone, Account.Type, Account.Website
 FROM Opportunity 
-WHERE StageName = 'Closed Won' AND HasOpportunityLineItem = true AND Amount &gt;= 100000 AND Account.Id &lt;&gt; null AND LastModifiedDate &gt; #[flowVars.lastQueryDate]" doc:name="Query SalesForce for Opportunities including Account info" fetchSize="${page.size}"/>
+WHERE StageName = 'Closed Won' AND HasOpportunityLineItem = true AND Amount &gt;= 100000 AND Account.Id &lt;&gt; null AND LastModifiedDate &gt; #[flowVars.lastQueryDate]" fetchSize="${page.size}" doc:name="Query SalesForce for Opportunities including Account info"/>
         </poll>
         <logger message="Retrieved new data from SalesForce..." level="INFO" doc:name="Logger"/>
         <flow-ref name="mainFlow" doc:name="mainFlow"/>
