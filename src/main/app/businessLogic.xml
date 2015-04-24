@@ -87,22 +87,7 @@ payload = map;
 <!--                 </choice> -->
             </batch:step>
             <batch:step name="upsertInventoryItems" accept-policy="ALL">
-                <enricher source="#[payload]" target="#[recordVars['products']]" doc:name="store in products">
-                    <processor-chain doc:name="Processor Chain">
-                        <sfdc:query config-ref="Salesforce" query="dsql:SELECT Description,Id,ListPrice,Name,ProductCode,Quantity,TotalPrice,Product2Id 
-FROM OpportunityLineItem
-WHERE OpportunityId = '#[payload.Id]'" doc:name="findOpportunityProducts"/>
-                        <expression-component doc:name="Expression"><![CDATA[// make it a list instead of iterator
-list = new java.util.ArrayList();
 
-while(payload.hasNext()) {
-	map = payload.next();
-	list.add(map);
-}
-payload = list;]]></expression-component>
-                    </processor-chain>
-                </enricher>
-                <logger message="Products: #[recordVars.products]" level="INFO" doc:name="Logger"/>
                 <enricher source="#[payload]" target="#[recordVars['itemsUpsertResult']]" doc:name="upsert invertoryItems">
                     <processor-chain doc:name="Processor Chain">
                         <expression-component doc:name="prepare data to insert inventory items"><![CDATA[import java.util.HashMap;
@@ -136,9 +121,20 @@ for(product : products) {
 	map.put("quantityAvailable", product['Quantity']);
     map.put("pricesIncludeTax", new Boolean(true));
 	itemList.add(map);
+
+map = new HashMap();
+map.put("companyName", payload['Account']['Name']);
+map.put("externalId", payload['Account']['Id']);
+map.put("phone", payload['Account']['Phone']);
+map.put("fax", payload['Account']['Fax']);
+map.put("subsidiary", ref);
+
+
 }
 
 payload = itemList;
+
+
 
 
 ]]></expression-component>
@@ -162,17 +158,17 @@ import java.util.ArrayList;
 //list of all sales order items (products)
 salesOrderItemArrayList = new ArrayList();
 
-for(productSFDC: recordVars['products']) {
+for(productSFDC: payload['OpportunityLineItems'].get('records')) {
    // inventory reference inside NetSuite - what we have in stock
 	itemRef = new RecordRef();
 	itemRef.setType(RecordType.INVENTORY_ITEM);
-	itemRef.setExternalId(productSFDC.get('Product2Id'));
+	itemRef.setExternalId(payload['OpportunityLineItems'].get('records').get('Product2Id'));
 
 	// what is part of Sales Order actually
 	soItem = new SalesOrderItem();
 	soItem.setItem(itemRef);
-    soItem.setQuantity(productSFDC['Quantity']);
-    soItem.setAmount(productSFDC['ListPrice']);
+    soItem.setQuantity(productSFDC.get('Quantity'));
+    soItem.setAmount(productSFDC.get('ListPrice'));
 	salesOrderItemArrayList.add(soItem);
 }
 
@@ -207,5 +203,15 @@ payload = map;]]></expression-component>
 
         <exception-strategy doc:name="Reference Exception Strategy" ref="defaultChoiceExceptionStrategy"/>
     </flow>
+    <sub-flow name="businessLogicSub_Flow">
+        <expression-component doc:name="Expression"><![CDATA[// make it a list instead of iterator
+list = new java.util.ArrayList();
+
+while(payload.hasNext()) {
+	map = payload.next();
+	list.add(map);
+}
+payload = list;]]></expression-component>
+    </sub-flow>
 
 </mule>
