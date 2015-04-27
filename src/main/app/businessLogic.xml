@@ -22,6 +22,7 @@ http://www.mulesoft.org/schema/mule/json http://www.mulesoft.org/schema/mule/jso
     <data-mapper:config name="NetSuite_to_SFDC_Opportunity" transformationGraphPath="netsuite_to_sfdc_opportunity.grf" doc:name="NetSuite_to_SFDC_Opportunity"/>
     <data-mapper:config name="Map_To_Map" transformationGraphPath="map_to_map.grf" doc:name="Map_To_Map"/>
     <data-mapper:config name="Map_To_Map_1" transformationGraphPath="map_to_map_1.grf" doc:name="Map_To_Map_1"/>
+    <data-mapper:config name="OpportunityLineItems_To_InventoryItems" transformationGraphPath="opportunitylineitems_to_inventoryitems.grf" doc:name="OpportunityLineItems_To_InventoryItems"/>
     <batch:job name="syncOpportunitiesBatch" max-failed-records="-1">
         <batch:process-records>
             <batch:step name="findCustomer" accept-policy="ALL">
@@ -90,17 +91,22 @@ payload = map;
 
                 <enricher source="#[payload]" target="#[recordVars['itemsUpsertResult']]" doc:name="upsert invertoryItems">
                     <processor-chain doc:name="Processor Chain">
-                        <expression-component doc:name="prepare data to insert inventory items"><![CDATA[import java.util.HashMap;
-import java.util.ArrayList;
+                        <data-mapper:transform config-ref="OpportunityLineItems_To_InventoryItems" doc:name="OpportunityLineItems To InventoryItems"/>
+                        <expression-component doc:name="prepare data to insert inventory items"><![CDATA[import java.util.ArrayList;
+import java.util.HashMap;
+
 import com.netsuite.webservices.platform.core_2014_1.RecordRefList;
 import com.netsuite.webservices.platform.core_2014_1.RecordRef;
 import com.netsuite.webservices.platform.core_2014_1.types.RecordType;
 
-products = recordVars['products'];
-itemList = new ArrayList();
+if(payload instanceof HashMap)  {
+	products = new ArrayList();
+    products.add(payload);
+	payload = products;
+}
 
-for(product : products) {
-	subList = new ArrayList();
+for(product : payload) {
+		subList = new ArrayList();
 
 	// reference to subsidiary
 	ref = new RecordRef();
@@ -112,27 +118,9 @@ for(product : products) {
 	subsidiaryList = new RecordRefList();
 	subsidiaryList.setRecordRef(subList);
 	
-	map = new HashMap();
-	map.put("displayName", product['Name'].replace(payload['Name'] + " ", ""));
-	map.put("itemId", product['ProductCode']);
-	map.put("cost", product['ListPrice']);
-	map.put("externalId",product['Product2Id']);    // id of Product, not OpportunityProduct
-	map.put("subsidiaryList", subsidiaryList);
-	map.put("quantityAvailable", product['Quantity']);
-    map.put("pricesIncludeTax", new Boolean(true));
-	itemList.add(map);
-
-map = new HashMap();
-map.put("companyName", payload['Account']['Name']);
-map.put("externalId", payload['Account']['Id']);
-map.put("phone", payload['Account']['Phone']);
-map.put("fax", payload['Account']['Fax']);
-map.put("subsidiary", ref);
-
+	product.put("subsidiaryList", subsidiaryList);
 
 }
-
-payload = itemList;
 
 
 
@@ -147,28 +135,36 @@ payload = itemList;
             </batch:step>
             <batch:step name="createSalesOrderInNetsuite" accept-expression="!(payload is NullPayload)" accept-policy="ALL">
 
-                <expression-component doc:name="prepare data to insert Sales Order"><![CDATA[import com.netsuite.webservices.transactions.sales_2014_1.types.SalesOrderOrderStatus;
+
+                <expression-component doc:name="prepare data to insert Sales Order"><![CDATA[import java.util.ArrayList;
+import java.util.HashMap;
+
+import com.netsuite.webservices.transactions.sales_2014_1.types.SalesOrderOrderStatus;
 import com.netsuite.webservices.platform.core_2014_1.RecordRef;
 import com.netsuite.webservices.platform.core_2014_1.types.RecordType;
 import com.netsuite.webservices.transactions.sales_2014_1.SalesOrderItem;
 import com.netsuite.webservices.transactions.sales_2014_1.SalesOrderItemList;
-import java.util.HashMap;
-import java.util.ArrayList;
 
 //list of all sales order items (products)
 salesOrderItemArrayList = new ArrayList();
 
-for(productSFDC: payload['OpportunityLineItems'].get('records')) {
+if(payload['OpportunityLineItems'].get('records') instanceof HashMap) {
+	products = new ArrayList();
+    products.add(payload['OpportunityLineItems'].get('records'));
+	payload['OpportunityLineItems'].put('records', products);
+}
+
+for(salesOrderItem: payload['OpportunityLineItems'].get('records')) {
    // inventory reference inside NetSuite - what we have in stock
 	itemRef = new RecordRef();
 	itemRef.setType(RecordType.INVENTORY_ITEM);
-	itemRef.setExternalId(payload['OpportunityLineItems'].get('records').get('Product2Id'));
+	itemRef.setExternalId(salesOrderItem.get('Product2Id'));
 
 	// what is part of Sales Order actually
 	soItem = new SalesOrderItem();
 	soItem.setItem(itemRef);
-    soItem.setQuantity(productSFDC.get('Quantity'));
-    soItem.setAmount(productSFDC.get('ListPrice'));
+	soItem.setQuantity(salesOrderItem.get('Quantity'));
+    soItem.setAmount(salesOrderItem.get('ListPrice'));
 	salesOrderItemArrayList.add(soItem);
 }
 
