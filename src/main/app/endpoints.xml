@@ -1,145 +1,18 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
-<mule xmlns:json="http://www.mulesoft.org/schema/mule/json" 
-xmlns:netsuite="http://www.mulesoft.org/schema/mule/netsuite" 
-xmlns:sfdc="http://www.mulesoft.org/schema/mule/sfdc" 
-xmlns:data-mapper="http://www.mulesoft.org/schema/mule/ee/data-mapper" 
+<mule xmlns:sfdc="http://www.mulesoft.org/schema/mule/sfdc"  
 xmlns:tracking="http://www.mulesoft.org/schema/mule/ee/tracking" 
-xmlns:smtp="http://www.mulesoft.org/schema/mule/smtp"
-xmlns:http="http://www.mulesoft.org/schema/mule/http" 
 xmlns="http://www.mulesoft.org/schema/mule/core" 
 xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" 
 xmlns:spring="http://www.springframework.org/schema/beans" version="EE-3.6.1" 
 xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" 
 xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-current.xsd
-http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
-http://www.mulesoft.org/schema/mule/smtp http://www.mulesoft.org/schema/mule/smtp/current/mule-smtp.xsd
 http://www.mulesoft.org/schema/mule/ee/tracking http://www.mulesoft.org/schema/mule/ee/tracking/current/mule-tracking-ee.xsd
 http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
-http://www.mulesoft.org/schema/mule/ee/data-mapper http://www.mulesoft.org/schema/mule/ee/data-mapper/current/mule-data-mapper.xsd
-http://www.mulesoft.org/schema/mule/sfdc http://www.mulesoft.org/schema/mule/sfdc/current/mule-sfdc.xsd
-http://www.mulesoft.org/schema/mule/netsuite http://www.mulesoft.org/schema/mule/netsuite/current/mule-netsuite.xsd
-http://www.mulesoft.org/schema/mule/json http://www.mulesoft.org/schema/mule/json/current/mule-json.xsd">
-    
-   
-<!--     <flow name="triggerFlowHTTP" processingStrategy="synchronous"> 
-        <http:listener config-ref="HTTP" path="/migrateopp" doc:name="HTTP"/>
-        <sfdc:query config-ref="Salesforce" query="dsql:SELECT LastModifiedDate, Name, Id, HasOpportunityLineItem, Amount, StageName, Probability, CloseDate, Type, Account.Id, Account.Name,  Account.Description, Account.Fax, Account.Industry, Account.NumberOfEmployees, Account.Phone, Account.Type, Account.Website
-FROM Opportunity 
-WHERE Name = 'Veri Test Opportunity' AND StageName = 'Closed Won' AND HasOpportunityLineItem = true" doc:name="get Opportunities including Account info"/>
-         <sfdc:query config-ref="Salesforce" query="dsql:SELECT LastModifiedDate, Name, Amount, StageName, Probability, CloseDate, Type, Account.Id, Account.Name, Account.AccountNumber, Account.AccountSource, Account.AnnualRevenue, Account.BillingCity, Account.BillingCountry, Account.BillingPostalCode, Account.BillingState, Account.BillingStreet, Account.Description, Account.Fax, Account.Industry, Account.NumberOfEmployees, Account.Ownership, Account.ParentId, Account.Phone, Account.Rating, Account.ShippingCity, Account.ShippingCountry, Account.ShippingPostalCode, Account.ShippingState, Account.ShippingStreet, Account.Sic, Account.SicDesc, Account.Site, Account.TickerSymbol, Account.Type, Account.Website
- FROM Opportunity 
- WHERE Name = '0062000000bOHiiAAG'" doc:name="get Opportunities"/>
-         <logger message="Loaded from SFDC: #[payload]" level="INFO" doc:name="Logger"/>
-        <flow-ref name="mainFlow" doc:name="mainFlow" doc:description="mainFlow"/>
-        <set-payload value="Batch has started: #[new Date().toString()]" doc:name="Set Payload"/>
-    </flow>
-    <flow name="createCustomerTest">
-        <http:listener config-ref="HTTP" path="/createCustomer" doc:name="HTTP"/>
-        <set-payload value="#[[&quot;companyName&quot;:&quot;Veri Test Sales Order&quot;]]" doc:name="Set Payload"/>
-        <expression-component doc:name="Expression"><![CDATA[ref = new com.netsuite.webservices.platform.core_2014_1.RecordRef();
-ref.setType(com.netsuite.webservices.platform.core_2014_1.types.RecordType.SUBSIDIARY);
-ref.setInternalId(${netsuite.subsidiaryId});
-
-payload.put("internalId","56252");
-payload.put("externalId","0012000001LuEIKAA3");
-payload.put("subsidiary", ref);
-]]></expression-component>
-        <netsuite:update-record config-ref="Netsuite" recordType="SALES_ORDER" doc:name="createCustomer">
-            <netsuite:attributes ref="#[payload]"/>
-        </netsuite:update-record>
-        <json:object-to-json-transformer doc:name="Object to JSON"/>
-        <logger message="Created customer: #[payload]" level="INFO" doc:name="Logger"/>
-
-    </flow>
-    <flow name="createSalesOrderTest">
-        <http:listener config-ref="HTTP" path="/createSO" doc:name="HTTP"/>
-        <expression-component doc:name="Expression"><![CDATA[import com.netsuite.webservices.transactions.sales_2014_1.types.SalesOrderOrderStatus;
-import com.netsuite.webservices.transactions.sales_2014_1.types.TransactionStatus;
-import com.netsuite.webservices.platform.core_2014_1.RecordRef;
-import com.netsuite.webservices.platform.core_2014_1.types.RecordType;
-import com.netsuite.webservices.transactions.sales_2014_1.SalesOrderItem;
-import com.netsuite.webservices.transactions.sales_2014_1.SalesOrderItemList;
-import java.util.HashMap;
-
-map = new HashMap();
-
-// customer reference
-ref = new RecordRef();
-ref.setType(RecordType.CUSTOMER);
-ref.setInternalId("56252");
-map.put("entity", ref);
-
-map.put("orderStatus", SalesOrderOrderStatus.PENDING_FULFILLMENT);
-//payload.put("transactionType", TransactionStatus.SALES_ORDER_PENDING_FULFILLMENT);
-
-// reference to Inventory Item
-itemRef = new RecordRef();
-itemRef.setType(RecordType.INVENTORY_ITEM);
-itemRef.setInternalId("694");
-
-//new sales order item
-soItem = new SalesOrderItem();
-soItem.setItem(itemRef);
-soItem.setQuantity(1.0);
-//soItem.setAmount(100000.0);
-//soItem.setDescription("GenWatt Diesel 1000kW");
-
-list = new ArrayList();
-list.add(soItem);
-
-itemList = new SalesOrderItemList();
-itemList.setItem(list);
-itemList.setReplaceAll(true);
-map.put("itemList", itemList);
-map.put("externalId":"testSO1");
-
-payload = map;
-]]></expression-component>
-        <netsuite:add-record config-ref="Netsuite" recordType="SALES_ORDER" doc:name="createSalesOrder"/>
-        <json:object-to-json-transformer doc:name="Object to JSON"/>
-        <logger message="Created Sales Order: #[payload]" level="INFO" doc:name="Logger"/>
-    </flow>
-    <flow name="createInventoryItemTest">
-        <http:listener config-ref="HTTP" path="/createItem" doc:name="HTTP"/>
-        <expression-component doc:name="Expression"><![CDATA[import com.netsuite.webservices.transactions.sales_2014_1.types.SalesOrderOrderStatus;
-import com.netsuite.webservices.transactions.sales_2014_1.types.TransactionStatus;
-import com.netsuite.webservices.platform.core_2014_1.RecordRef;
-import com.netsuite.webservices.platform.core_2014_1.types.RecordType;
-import com.netsuite.webservices.transactions.sales_2014_1.SalesOrderItem;
-import com.netsuite.webservices.transactions.sales_2014_1.SalesOrderItemList;
-import java.util.HashMap;
-
-map = new HashMap();
-
-// customer reference - not needed here
-//ref = new RecordRef();
-//ref.setType(RecordType.CUSTOMER);
-//ref.setInternalId("56252");
-
-map.put("displayName", "Test Item 1");
-map.put("itemId", "Test Item 1");
-map.put("cost", 250.0);
-map.put("externalId","testItem1");
-
-payload = map;
-]]></expression-component>
-        <netsuite:add-record config-ref="Netsuite" recordType="INVENTORY_ITEM" doc:name="createInventoryItem">
-            <netsuite:attributes ref="#[payload]"/>
-        </netsuite:add-record>
-        <json:object-to-json-transformer doc:name="Object to JSON"/>
-        <logger message="Created inventory Item: #[payload]" level="INFO" doc:name="Logger"/>
-    </flow>
-    <flow name="getInventoryItem">
-        <http:listener config-ref="HTTP" path="/getItem" doc:name="HTTP"/>
-        <netsuite:get-record config-ref="Netsuite" doc:name="Netsuite">
-            <netsuite:record-ref internalId="694" type="INVENTORY_ITEM"/>
-        </netsuite:get-record>
-        <json:object-to-json-transformer doc:name="Object to JSON"/>
-        <logger message="#[payload]" level="INFO" doc:name="Logger"/>
-    </flow>
-    
-    -->
+http://www.mulesoft.org/schema/mule/sfdc http://www.mulesoft.org/schema/mule/sfdc/current/mule-sfdc.xsd">
+     
+	<!-- In this file you should declare all your inbound endpoints and control the access to your application -->
+	
     <flow name="triggerFlow" processingStrategy="synchronous">
         <poll doc:name="Poll">
             <fixed-frequency-scheduler frequency="${poll.frequencyMillis}" startDelay="${poll.startDelayMillis}"/>
@@ -151,7 +24,4 @@ payload = map;
         <flow-ref name="mainFlow" doc:name="mainFlow"/>
     </flow>
     
-	<!-- 	In this file you should declare all your inbound endpoints and from here controll the access to your application -->
-
-
 </mule>

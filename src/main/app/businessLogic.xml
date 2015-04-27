@@ -18,9 +18,6 @@ http://www.mulesoft.org/schema/mule/netsuite http://www.mulesoft.org/schema/mule
 http://www.mulesoft.org/schema/mule/batch http://www.mulesoft.org/schema/mule/batch/current/mule-batch.xsd
 http://www.mulesoft.org/schema/mule/json http://www.mulesoft.org/schema/mule/json/current/mule-json.xsd">
 
-    <data-mapper:config name="Map_To_CSV" transformationGraphPath="map_to_csv.grf" doc:name="Map_To_CSV"/>
-    <data-mapper:config name="NetSuite_to_SFDC_Opportunity" transformationGraphPath="netsuite_to_sfdc_opportunity.grf" doc:name="NetSuite_to_SFDC_Opportunity"/>
-    <data-mapper:config name="Map_To_Map" transformationGraphPath="map_to_map.grf" doc:name="Map_To_Map"/>
     <data-mapper:config name="Map_To_Map_1" transformationGraphPath="map_to_map_1.grf" doc:name="Map_To_Map_1"/>
     <data-mapper:config name="OpportunityLineItems_To_InventoryItems" transformationGraphPath="opportunitylineitems_to_inventoryitems.grf" doc:name="OpportunityLineItems_To_InventoryItems"/>
     <batch:job name="syncOpportunitiesBatch" max-failed-records="-1">
@@ -30,7 +27,7 @@ http://www.mulesoft.org/schema/mule/json http://www.mulesoft.org/schema/mule/jso
 
                 <enricher source="#[payload]" target="#[recordVars['custInNetsuite']]" doc:name="store in custInNetsuite">
                     <processor-chain doc:name="Processor Chain">
-                        <netsuite:get-record config-ref="Netsuite" doc:name="query Customer in NetSuite">
+                        <netsuite:get-record config-ref="Netsuite" doc:name="get Customer in NetSuite">
                             <netsuite:record-ref externalId="#[payload.Account.Id]" type="CUSTOMER"/>
                         </netsuite:get-record>
                 
@@ -52,19 +49,8 @@ ref = new RecordRef();
 ref.setType(RecordType.SUBSIDIARY);
 ref.setInternalId(${netsuite.subsidiaryId});
 
-payload.put('subsidiary', ref);
-
-/*
-map = new HashMap();
-map.put("companyName", payload['Account']['Name']);
-map.put("externalId", payload['Account']['Id']);
-map.put("phone", payload['Account']['Phone']);
-map.put("fax", payload['Account']['Fax']);
-map.put("subsidiary", ref);
-
-payload = map;
-*/]]></expression-component>
-                                <netsuite:add-record config-ref="Netsuite" recordType="CUSTOMER" doc:name="addCustomer">
+payload.put('subsidiary', ref);]]></expression-component>
+                                <netsuite:add-record config-ref="Netsuite" recordType="CUSTOMER" doc:name="add Customer">
                                     <netsuite:attributes ref="#[payload]"/>
                                 </netsuite:add-record>
 
@@ -76,16 +62,6 @@ payload = map;
                     </otherwise>
                 </choice>
                 <logger message="Customer ID: #[recordVars.idOfCustomerInNetsuite]" level="INFO" doc:name="Logger"/>
-<!--                 <choice doc:name="Choice"> -->
-
-                
-<!--                     <when expression="recordVars.custInNetsuite.hasNext() == false"> -->
-<!--                         <logger message="Customer was not found in NetSuite!" level="INFO" doc:name="Logger"/> -->
-<!--                     </when> -->
-<!--                     <otherwise> -->
-<!--                         <logger message="Customer was found in Netsuite! #[recordVars.custInNetsuite.next()]" level="INFO" doc:name="Logger"/> -->
-<!--                     </otherwise> -->
-<!--                 </choice> -->
             </batch:step>
             <batch:step name="upsertInventoryItems" accept-policy="ALL">
 
@@ -199,15 +175,6 @@ payload = map;]]></expression-component>
 
         <exception-strategy doc:name="Reference Exception Strategy" ref="defaultChoiceExceptionStrategy"/>
     </flow>
-    <sub-flow name="businessLogicSub_Flow">
-        <expression-component doc:name="Expression"><![CDATA[// make it a list instead of iterator
-list = new java.util.ArrayList();
 
-while(payload.hasNext()) {
-	map = payload.next();
-	list.add(map);
-}
-payload = list;]]></expression-component>
-    </sub-flow>
 
 </mule>
