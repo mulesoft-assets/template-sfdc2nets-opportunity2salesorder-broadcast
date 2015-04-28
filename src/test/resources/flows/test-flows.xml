@@ -10,8 +10,8 @@ http://www.mulesoft.org/schema/mule/netsuite http://www.mulesoft.org/schema/mule
         </sfdc:update>
     </sub-flow>
     <sub-flow name="createAccountsInSFDC">
-        <sfdc:create config-ref="Salesforce" type="Account" doc:name="Salesforce">
-            <sfdc:objects ref="#[payload]"/>
+        <sfdc:create config-ref="Salesforce" type="Opportunity" doc:name="Salesforce">
+            <sfdc:objects/>
         </sfdc:create>
     </sub-flow>
     <sub-flow name="deleteAccountFromSFDC">

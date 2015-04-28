@@ -18,7 +18,7 @@ http://www.mulesoft.org/schema/mule/sfdc http://www.mulesoft.org/schema/mule/sfd
             <fixed-frequency-scheduler frequency="${poll.frequencyMillis}" startDelay="${poll.startDelayMillis}"/>
             <watermark variable="lastQueryDate" default-expression="${watermark.default.expression}" selector="MAX" selector-expression="#[payload.LastModifiedDate]"/>
             <sfdc:query config-ref="Salesforce" query="SELECT Id, LastModifiedDate, Name, Amount, StageName,  (SELECT Description,Id,ListPrice,Name,ProductCode,Quantity,TotalPrice,Product2Id FROM Opportunity.OpportunityLineItems ORDER BY SortOrder),Account.Id,Account.Name,Account.Description,Account.Fax,Account.Phone FROM Opportunity WHERE ((((StageName = 'Closed Won' AND HasOpportunityLineItem = true) AND Amount &gt;= 100000) AND Account.Id != null) AND LastModifiedDate &gt; #[flowVars.lastQueryDate])
-" fetchSize="${page.size}" doc:name="Query SalesForce for Opportunities including Account info"/>
+" fetchSize="${page.size}" doc:name="Query SalesForce for Opportunities including Account and Products info"/>
         </poll>
         <logger message="Retrieved new data from SalesForce..." level="INFO" doc:name="Logger"/>
         <flow-ref name="mainFlow" doc:name="mainFlow"/>

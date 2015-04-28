@@ -1,5 +1,5 @@
 
-# Anypoint Template: Salesforce Opportunity to Netsuite Sales Order Broadcast
+# Anypoint Template: Salesforce Opportunity to NetSuite Sales Order Broadcast
 
 + [License Agreement](#licenseagreement)
 + [Use Case](#usecase)
@@ -26,21 +26,28 @@ Note that using this template is subject to the conditions of this [License Agre
 Please review the terms of the license before downloading and using this template. In short, you are allowed to use the template for free with Mule ESB Enterprise Edition, CloudHub, or as a trial in Anypoint Studio.
 
 # Use Case <a name="usecase"/>
-As a Salesforce admin I want to synchronize Closed Won Opportunities from SalesForce to Netsuite system as Sales Order object.
+As a Salesforce admin I want to synchronize Opportunities with 'Closed Won' stage from Salesforce to NetSuite system. In NetSuite, these objects become Sales Orders.
 
-This Template should serve as a foundation for setting an online sync of opportunities from SalesForce instance to NetSuite as Sales Order. Every time there is a new opportunity or a change in an already existing one, the integration will poll for changes in SalesForce instance and it will be responsible for updating the Sales Order in NetSuite.
+This Template should serve as a foundation for setting an online sync of Opportunities from Salesforce instance to NetSuite as Sales Orders. Every time there is a new Opportunity matching the criteria defined
+or a change in an already existing one in SalesForce, the integration will detect the changes and it will insert/update the Sales Order in NetSuite.
 
 Requirements have been set not only to be used as examples, but also to establish a starting point to adapt your integration to your requirements.
 
 As implemented, this Anypoint Template leverage the [Batch Module](http://www.mulesoft.org/documentation/display/current/Batch+Processing) 
 
 The batch job is divided into *Input*, *Process* and *On Complete* stages.
-The integration is triggered by a poll defined in the flow that is going to trigger the application, querying newest SalesForce updates/creations matching a filter criteria and executing the batch job.
-In the *Process* phase, the Customer corresponding to the source Opportunity's Account will be searched for in NetSuite. If the Customer does not exist in NetSuite, it will be created in the next step. Otherwise the existing ID will be used. 
-Then all the products (Opportunity Line Items) associated with the Opportunity are searched for and inserted into NetSuite as InventoryLineItems.
-Last step upserts the Sales Order object referencing the Customer and Items created/updated in previous steps.
+The integration is triggered by a poll defined in the flow that is going to trigger the application, querying newest Salesforce updates/creations matching a filter criteria and executing the batch job.
+We query not only for Opportunity's data alone, but we retrieve information about related Account and Products as Sales Order in NetSuite system requires references to related Customer and Items in order to be created. 
+This decreases the numbers of queries required to SalesForce to 1 per poll cycle.
+Therefore, we filter out propagation of Opportunities that are not 'Closed Won', don't have an Account or at least one Product associated.
 
-Finally during the On Complete stage the Anypoint Template will log output statistics data into the console.
+In the Batch Job's *Process* phase, the Customer corresponding to the source Opportunity's Account will be searched for in NetSuite. We use the *externalId* property of objects in NetSuite to match their SalesForce counterpart. 
+This property should contain *Id* property of SalesForce object.
+If the Customer does not exist in NetSuite, it will be created in the next step, so that we have it ready to reference it later to Sales Order.
+Then all the products (Opportunity Line Items) associated with the Opportunity are upserted into NetSuite as InventoryItem objects.
+Last step upserts the Sales Order object referencing the Customer and Items created/updated in the previous steps.
+
+Finally during the *On Complete* stage the Anypoint Template will log output statistics data into the console.
 
 # Considerations <a name="considerations"/>
 
@@ -96,12 +103,13 @@ column='486'
 
 ### As destination of data
 
-There are no particular considerations for this Anypoint Template regarding Netsuite as data destination.
+Customer must be assigned to subsidiary. In this template, this is done statically and you must configure the property file with subsidiary *internalId* that is already in the system. You can find out this number by entering 'subsidiaries' 
+into the NetSuite search field and selecting 'Page - Subsidiaries'. When you click on the 'View' next to the subsidiary chosen, you will see the ID in the URL line. Please, use this Id to populate *nets.subsidiaryId* property in the property file.
 
 
 
 # Run it! <a name="runit"/>
-Simple steps to get Salesforce Opportunity to Netsuite Sales Order Broadcast running.
+Simple steps to get Salesforce Opportunity to NetSuite Sales Order Broadcast running.
 
 
 ## Running on premise <a name="runonopremise"/>
@@ -138,11 +146,11 @@ Once you have imported you Anypoint Template into Anypoint Studio you need to fo
 
 ### Running on Mule ESB stand alone <a name="runonmuleesbstandalone"/>
 Complete all properties in one of the property files, for example in [mule.prod.properties] (../master/src/main/resources/mule.prod.properties) and run your app with the corresponding environment variable to use it. To follow the example, this will be `mule.env=prod`. 
-After this, to trigger the use case you just need to hit the local http endpoint with the port you configured in your file. If this is, for instance, `9090` then you should hit: `http://localhost:9090/migrateopportunities` and this will create a CSV report and send it to the mails set.
+
 
 ## Running on CloudHub <a name="runoncloudhub"/>
 While [creating your application on CloudHub](http://www.mulesoft.org/documentation/display/current/Hello+World+on+CloudHub) (Or you can do it later as a next step), you need to go to Deployment > Advanced to set all environment variables detailed in **Properties to be configured** as well as the **mule.env**.
-Once your app is all set up and started, there is no need to do anything else. Every time a opportunity is created or modified, it will be automatically synchronised to Netsuite as long as it is 'Closed Won' and has products associated.
+Once your app is all set up and started, there is no need to do anything else. Every time a opportunity is created or modified, it will be automatically synchronised to NetSuite as long as it is 'Closed Won' and has products associated.
 
 ### Deploying your Anypoint Template on CloudHub <a name="deployingyouranypointtemplateoncloudhub"/>
 Mule Studio provides you with really easy way to deploy your Template directly to CloudHub, for the specific steps to do so please check this [link](http://www.mulesoft.org/documentation/display/current/Deploying+Mule+Applications#DeployingMuleApplications-DeploytoCloudHub)
@@ -156,26 +164,21 @@ In order to use this Mule Anypoint Template you need to configure properties (Cr
 + watermark.defaultExpression `YESTERDAY`
 
 
-#### SalesForce Connector configuration
-+ sfdc.a.username `bob.dylan@orga`
-+ sfdc.a.password `DylanPassword123`
-+ sfdc.a.securityToken `avsfwCUl7apQs56Xq2AKi3X`
-+ sfdc.a.url `https://login.salesforce.com/services/Soap/u/31.0`
+#### Salesforce Connector configuration
++ sfdc.username `bob.dylan@orga`
++ sfdc.password `DylanPassword123`
++ sfdc.securityToken `avsfwCUl7apQs56Xq2AKi3X`
++ sfdc.url `https://login.salesforce.com/services/Soap/u/31.0`
 
-#### SalesForce Connector configuration
-+ netsuite.email `email@example.com`
-+ netsuite.password `password`
-+ netsuite.account `TSTDRVxxxxxxx`
-+ netsuite.roleId `3`  
-+ netsuite.subsidiaryId=1
-+ netsuite.locationId=2
+#### NetSuite Connector configuration
++ nets.email `email@example.com`
++ nets.password `password`
++ nets.account `TSTDRVxxxxxxx`
++ nets.roleId `9`  
++ nets.subsidiaryId `1`
 
 # API Calls <a name="apicalls"/>
-Salesforce imposes limits on the number of API Calls that can be made. Therefore calculating this amount may be an important factor to consider. The Anypoint Template calls to the API can be calculated using the formula:
-
-***1 + X ***
-
-Being ***X*** the number of Opportunities to be synchronized on each run.
+Salesforce imposes limits on the number of API Calls that can be made. However, in this template, only one call per poll cycle is done to retrieve all the information required.
 
 
 # Customize It!<a name="customizeit"/>
@@ -198,16 +201,16 @@ In the visual editor they can be found on the *Global Element* tab.
 
 
 ## businessLogic.xml<a name="businesslogicxml"/>
-Functional aspect of the Template is implemented on this XML, directed by one flow that will poll for SalesForce creations/updates. The severeal message processors constitute the actions that fully implement the logic of this Template:
+Functional aspect of the Template is implemented in this XML, directed by one flow that will poll for Salesforce Opportunity creations/updates. The severeal message processors constitute the actions that fully implement the logic of this Template:
 
-1. During the Input stage the Template will query the SalesForce isntance for existing opportunities that match the filter criteria.
-2. During the Process stage, each SFDC opportunity will be upserted to NetSuite system. Before this is possible, the template will query the NetSuite if Customer and the products exist and if not it makes sure these objects are created.
+1. During the Input stage the Template will query the Salesforce instance for existing opportunities (including associated Account and Products) that match the filter criteria.
+2. During the Process stage, each SFDC opportunity will be upserted to NetSuite system. Before this is possible, the template will query the NetSuite if Customer and the Items exists and if not, it makes sure these objects are created.
 Finally during the On Complete stage the Template will log batch statistics into the console.
 
 
 
 ## endpoints.xml<a name="endpointsxml"/>
-This is file is conformed by a Flow containing the Poll that will periodically query Salesforce for updated/created Opportunities that meet the defined criteria in the query. And then executing the batch job process with the query results.
+This file is conformed by a Flow containing the Poll that will periodically query Salesforce for updated/created Opportunities that meet the defined criteria in the query. And then executing the batch job process with the query results.
 
 
 

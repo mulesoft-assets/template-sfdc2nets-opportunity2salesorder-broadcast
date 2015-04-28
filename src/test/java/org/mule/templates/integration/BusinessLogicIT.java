@@ -6,16 +6,9 @@
 
 package org.mule.templates.integration;
 
-import static org.mule.templates.builders.SfdcObjectBuilder.anAccount;
-
 import java.io.File;
-import java.text.ParseException;
-import java.text.SimpleDateFormat;
 import java.util.ArrayList;
-import java.util.Calendar;
 import java.util.Date;
-import java.util.HashMap;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
@@ -24,13 +17,10 @@ import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.BeforeClass;
-import org.junit.Ignore;
 import org.junit.Rule;
 import org.junit.Test;
 import org.mule.MessageExchangePattern;
 import org.mule.api.MuleEvent;
-import org.mule.api.MuleException;
-import org.mule.api.lifecycle.InitialisationException;
 import org.mule.processor.chain.SubflowInterceptingChainLifecycleWrapper;
 import org.mule.tck.junit4.rule.DynamicPort;
 import org.mule.tck.probe.PollingProber;
@@ -39,11 +29,9 @@ import org.mule.templates.builders.SfdcObjectBuilder;
 import org.mule.templates.test.utils.ListenerProbe;
 import org.mule.templates.test.utils.PipelineSynchronizeListener;
 
-import com.google.common.collect.Lists;
+import com.mulesoft.module.batch.BatchTestHelper;
 import com.netsuite.webservices.platform.core_2014_1.RecordRef;
 import com.netsuite.webservices.platform.core_2014_1.types.RecordType;
-import com.sforce.soap.partner.SaveResult;
-import com.mulesoft.module.batch.BatchTestHelper;
 
 import de.schlichtherle.io.FileInputStream;
 
@@ -99,6 +87,7 @@ public class BusinessLogicIT extends AbstractTemplateTestCase {
 		props.load(new FileInputStream(new File(PATH_TO_TEST_PROPERTIES)));
 		
 		TEST_OPPORTUNITY_ID = props.getProperty("sfdc.test.opportunityId");
+		System.err.println("Test Opportunity ID: " + TEST_OPPORTUNITY_ID);
 		helper = new BatchTestHelper(muleContext);
 		
 		stopFlowSchedulers(POLL_FLOW_NAME);
@@ -116,19 +105,21 @@ public class BusinessLogicIT extends AbstractTemplateTestCase {
 	@After
 	public void tearDown() throws Exception {
 	//	deleteTestOpportunityFromSFDC(createdOpportunities);
+		deleteTestSalesOrderFromNetsuite(TEST_OPPORTUNITY_ID);
 	}
 
 	
 	/**
 	 * Tests the correct execution of the template. Does not create test opportunities. 
-	 * Verifies execution without errors and that this template sends an e-mail.
+	 * Instead, it expects existing Opportunity in Salesforce system. This Opportunity 
+	 * should have Account and at least one Product associated.
 	 * @throws Exception
 	 */
 	@SuppressWarnings("unchecked")
 	@Test
 	public void testMainFlow() throws Exception {
 		
-		Thread.sleep(3000);
+		//Thread.sleep(3000);
 		// Run poll and wait for it to run
 		runSchedulersOnce(POLL_FLOW_NAME);
 		waitForPollToRun();
@@ -142,13 +133,10 @@ public class BusinessLogicIT extends AbstractTemplateTestCase {
 		flow.initialise();
 		MuleEvent response = flow.process(getTestEvent(TEST_OPPORTUNITY_ID, MessageExchangePattern.REQUEST_RESPONSE));
 		
-		System.err.println("After retrieving data (class): " + response.getMessage().getPayload().getClass());
-		System.err.println("After retrieving data: " + response.getMessage().getPayload());
 		
-		Map<String, Object> payload = (Map<String,Object>) response.getMessage().getPayload();
-		
+		//assertions
+		Map<String, Object> payload = (Map<String,Object>) response.getMessage().getPayload();	
 		Assert.assertNotNull(payload.get("internalId"));
-		
 	}
 
 
@@ -158,7 +146,7 @@ public class BusinessLogicIT extends AbstractTemplateTestCase {
 	 * @throws Exception
 	 */
 	private void updateSFDCOpportunity(String Id) throws Exception {
-		System.out.println("Updating the test opportunity!");
+		System.err.println("Updating the test opportunity!");
 		
 		Map<String, Object> opp = SfdcObjectBuilder.anOpportunity()
 				.with("Id",Id)
@@ -172,6 +160,8 @@ public class BusinessLogicIT extends AbstractTemplateTestCase {
 		SubflowInterceptingChainLifecycleWrapper flow = getSubFlow("updateSFDCOpportunity");
 		flow.initialise();
 		flow.process(getTestEvent(oppList, MessageExchangePattern.REQUEST_RESPONSE));
+		
+		System.err.println("test opportunity (Id: " + TEST_OPPORTUNITY_ID +  ") updated!");
 	}
 	
 	private void waitForPollToRun() {
@@ -192,24 +182,24 @@ public class BusinessLogicIT extends AbstractTemplateTestCase {
 //
 //	}
 	
-//	/**
-//	 * Deletes opportunity from Netsuite
-//	 * @param salesOrder Sales Order to delete. It should contain the internalId.
-//	 * @throws Exception
-//	 */
-//	private void deleteTestSalesOrderFromNetsuite(String Id) throws Exception {
-//		// reference to the object to delete
+	/**
+	 * Deletes opportunity from Netsuite
+	 * @param salesOrder Sales Order to delete. It should contain the internalId.
+	 * @throws Exception
+	 */
+	private void deleteTestSalesOrderFromNetsuite(String Id) throws Exception {
+		// reference to the object to delete
 //		RecordRef ref = new RecordRef();
 //		ref.setType(RecordType.SALES_ORDER);
 //		ref.setExternalId(Id);
-//		
-//		// initialize
-//		SubflowInterceptingChainLifecycleWrapper flow = getSubFlow("deleteSalesOrderFromNetsuite");
-//		flow.initialise();
-//
-//		// proceed with deletion
-//		flow.process(getTestEvent(ref, MessageExchangePattern.REQUEST_RESPONSE));
-//	}
+		
+		// initialize
+		SubflowInterceptingChainLifecycleWrapper flow = getSubFlow("deleteSalesOrderFromNetsuite");
+		flow.initialise();
+
+		// proceed with deletion
+		flow.process(getTestEvent(TEST_OPPORTUNITY_ID, MessageExchangePattern.REQUEST_RESPONSE));
+	}
 
 //	/**
 //	 * Builds object used to create Salesforce Opportunity.
