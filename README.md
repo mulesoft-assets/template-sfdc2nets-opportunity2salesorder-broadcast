@@ -26,19 +26,17 @@ Note that using this template is subject to the conditions of this [License Agre
 Please review the terms of the license before downloading and using this template. In short, you are allowed to use the template for free with Mule ESB Enterprise Edition, CloudHub, or as a trial in Anypoint Studio.
 
 # Use Case <a name="usecase"/>
-As a Salesforce admin I want to synchronize Opportunities with 'Closed Won' stage from Salesforce to NetSuite system. In NetSuite, these objects become Sales Orders.
+As a Salesforce admin I want to synchronize Opportunities in Salesforce that are in the 'Closed Won' stage to NetSuite. In NetSuite, these opportunities become Sales Orders. Each time there is a new Opportunity that matches the criteria defined
+or if there is a change in an already existing one in SalesForce, the integration application will detect the changes and it will insert/update the Sales Order in NetSuite. This template can serve as a part of the Quote to Cash process for an Enterprise.
 
-This Template should serve as a foundation for setting an online sync of Opportunities from Salesforce instance to NetSuite as Sales Orders. Every time there is a new Opportunity matching the criteria defined
-or a change in an already existing one in SalesForce, the integration will detect the changes and it will insert/update the Sales Order in NetSuite.
+The application has been built in a manner wherein it can not only be used as examples, but it can also be used to establish a starting point on which yuo can build out your integration use case.
 
-Requirements have been set not only to be used as examples, but also to establish a starting point to adapt your integration to your requirements.
-
-As implemented, this Anypoint Template leverage the [Batch Module](http://www.mulesoft.org/documentation/display/current/Batch+Processing) 
+As implemented, this Anypoint Template leverages the [Batch Module](http://www.mulesoft.org/documentation/display/current/Batch+Processing) 
 
 The batch job is divided into *Input*, *Process* and *On Complete* stages.
-The integration is triggered by a poll defined in the flow that is going to trigger the application, querying newest Salesforce updates/creations matching a filter criteria and executing the batch job.
-We query not only for Opportunity's data alone, but we retrieve information about related Account and Products as Sales Order in NetSuite system requires references to related Customer and Items in order to be created. 
-This decreases the numbers of queries required to SalesForce to 1 per poll cycle.
+The integration is triggered by a pollng mechanism defined in the flow. The application queries for newest Salesforce updates/creations using a filter criteria and executes the batch job.
+The application does not retrieve the data pertaining to the Oppportunities that were modified/created, but also information about related Account and Products.The reason being, Sales Order in NetSuite requires references to related Customer and Items in order to be created. 
+This decreases the numbers of queries made to SalesForce to 1 per poll cycle.
 Therefore, we filter out propagation of Opportunities that are not 'Closed Won', don't have an Account or at least one Product associated.
 
 In the Batch Job's *Process* phase, the Customer corresponding to the source Opportunity's Account will be searched for in NetSuite. We use the *externalId* property of objects in NetSuite to match their SalesForce counterpart. 
