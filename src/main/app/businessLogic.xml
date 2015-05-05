@@ -81,6 +81,7 @@ if(payload instanceof HashMap)  {
 	payload = products;
 }
 
+// add subsidiary to the products
 for(product : payload) {
 		subList = new ArrayList();
 
@@ -110,16 +111,14 @@ for(product : payload) {
                 </enricher>
             </batch:step>
             <batch:step name="createSalesOrderInNetsuite" accept-expression="!(payload is NullPayload)" accept-policy="ALL">
-
-
                 <expression-component doc:name="prepare data to insert Sales Order"><![CDATA[import java.util.ArrayList;
 import java.util.HashMap;
-
 import com.netsuite.webservices.transactions.sales_2014_1.types.SalesOrderOrderStatus;
 import com.netsuite.webservices.platform.core_2014_1.RecordRef;
 import com.netsuite.webservices.platform.core_2014_1.types.RecordType;
 import com.netsuite.webservices.transactions.sales_2014_1.SalesOrderItem;
 import com.netsuite.webservices.transactions.sales_2014_1.SalesOrderItemList;
+
 
 //list of all sales order items (products)
 salesOrderItemArrayList = new ArrayList();
@@ -136,7 +135,7 @@ for(salesOrderItem: payload['OpportunityLineItems'].get('records')) {
 	itemRef.setType(RecordType.INVENTORY_ITEM);
 	itemRef.setExternalId(salesOrderItem.get('Product2Id'));
 
-	// what is part of Sales Order actually
+	// create sales order item
 	soItem = new SalesOrderItem();
 	soItem.setItem(itemRef);
 	soItem.setQuantity(salesOrderItem.get('Quantity'));
@@ -154,6 +153,7 @@ ref = new RecordRef();
 ref.setType(RecordType.CUSTOMER);
 ref.setExternalId(recordVars['idOfCustomerInNetsuite']);
 
+// compose sales order 
 map = new HashMap();
 map.put("entity", ref); // customer reference
 map.put("itemList", itemList); // list of sales order items
@@ -161,7 +161,9 @@ map.put("orderStatus", SalesOrderOrderStatus.PENDING_FULFILLMENT);
 map.put("externalId", payload['Id']); // ID of salesforce opportunity
 payload = map;]]></expression-component>
 
+
                 <netsuite:upsert-record config-ref="Netsuite" recordType="SALES_ORDER" doc:name="upsert Sales Order in Netsuite">
+                    <netsuite:attributes ref="#[payload]"/>
 
 
 
