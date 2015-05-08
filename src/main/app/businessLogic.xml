@@ -42,8 +42,8 @@ http://www.mulesoft.org/schema/mule/json http://www.mulesoft.org/schema/mule/jso
                             <processor-chain doc:name="Processor Chain">
                                 <data-mapper:transform config-ref="Map_To_Map_1" doc:name="Account To Customer"/>
                                 <expression-component doc:name="data to create Customer"><![CDATA[import java.util.HashMap;
-import com.netsuite.webservices.platform.core_2014_1.RecordRef;
-import com.netsuite.webservices.platform.core_2014_1.types.RecordType;
+import com.netsuite.webservices.platform.core.RecordRef;
+import com.netsuite.webservices.platform.core.types.RecordType;
 
 ref = new RecordRef();
 ref.setType(RecordType.SUBSIDIARY);
@@ -71,9 +71,9 @@ payload.put('subsidiary', ref);]]></expression-component>
                         <expression-component doc:name="prepare data to insert inventory items"><![CDATA[import java.util.ArrayList;
 import java.util.HashMap;
 
-import com.netsuite.webservices.platform.core_2014_1.RecordRefList;
-import com.netsuite.webservices.platform.core_2014_1.RecordRef;
-import com.netsuite.webservices.platform.core_2014_1.types.RecordType;
+import com.netsuite.webservices.platform.core.RecordRefList;
+import com.netsuite.webservices.platform.core.RecordRef;
+import com.netsuite.webservices.platform.core.types.RecordType;
 
 if(payload instanceof HashMap)  {
 	products = new ArrayList();
@@ -113,11 +113,11 @@ for(product : payload) {
             <batch:step name="createSalesOrderInNetsuite" accept-expression="!(payload is NullPayload)" accept-policy="ALL">
                 <expression-component doc:name="prepare data to insert Sales Order"><![CDATA[import java.util.ArrayList;
 import java.util.HashMap;
-import com.netsuite.webservices.transactions.sales_2014_1.types.SalesOrderOrderStatus;
-import com.netsuite.webservices.platform.core_2014_1.RecordRef;
-import com.netsuite.webservices.platform.core_2014_1.types.RecordType;
-import com.netsuite.webservices.transactions.sales_2014_1.SalesOrderItem;
-import com.netsuite.webservices.transactions.sales_2014_1.SalesOrderItemList;
+import com.netsuite.webservices.transactions.sales.types.SalesOrderOrderStatus;
+import com.netsuite.webservices.platform.core.RecordRef;
+import com.netsuite.webservices.platform.core.types.RecordType;
+import com.netsuite.webservices.transactions.sales.SalesOrderItem;
+import com.netsuite.webservices.transactions.sales.SalesOrderItemList;
 
 
 //list of all sales order items (products)

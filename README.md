@@ -26,14 +26,14 @@ Note that using this template is subject to the conditions of this [License Agre
 Please review the terms of the license before downloading and using this template. In short, you are allowed to use the template for free with Mule ESB Enterprise Edition, CloudHub, or as a trial in Anypoint Studio.
 
 # Use Case <a name="usecase"/>
-As a Salesforce admin I want to synchronize Opportunities in Salesforce that are in the 'Closed Won' stage to NetSuite. In NetSuite, these opportunities become Sales Orders. Each time there is a new Opportunity that matches the criteria defined
-or if there is a change in an already existing one in SalesForce, the integration application will detect the changes and it will insert/update the Sales Order in NetSuite. This template can serve as a part of the Quote to Cash process for an Enterprise.
+As a Salesforce admin I want to synchronize Opportunities in Salesforce that are in the 'Closed Won' stage to NetSuite. In NetSuite, these opportunities become Sales Orders. Each time there is a new Opportunity that matches the criteria defined or if there is a change in an already existing one in SalesForce, the integration application will detect the changes and it will insert/update the Sales Order in NetSuite. This template can serve as a part of the Quote to Cash process for an Enterprise.
 
 The application has been built in a manner wherein it can not only be used as examples, but it can also be used to establish a starting point on which yuo can build out your integration use case.
 
 As implemented, this Anypoint Template leverages the [Batch Module](http://www.mulesoft.org/documentation/display/current/Batch+Processing) 
 
 The batch job is divided into *Input*, *Process* and *On Complete* stages.
+
 The integration is triggered by a pollng mechanism defined in the flow. The application queries for newest Salesforce updates/creations using a filter criteria and executes the batch job.
 The application does not retrieve the data pertaining to the Oppportunities that were modified/created, but also information about related Account and Products.The reason being, Sales Order in NetSuite requires references to related Customer and Items in order to be created. 
 This decreases the numbers of queries made to SalesForce to 1 per poll cycle.
@@ -159,7 +159,7 @@ In order to use this Mule Anypoint Template you need to configure properties (Cr
 ### Application configuration
 + poll.frequencyMillis `60000`
 + poll.startDelayMillis `0`
-+ watermark.defaultExpression `YESTERDAY`
++ watermark.defaultExpression `YESTERDAY` or `2015-04-01T19:40:27.000Z`
 
 
 #### Salesforce Connector configuration
