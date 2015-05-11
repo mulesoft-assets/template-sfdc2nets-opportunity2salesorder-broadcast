@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <mule xmlns:json="http://www.mulesoft.org/schema/mule/json" 
 xmlns:batch="http://www.mulesoft.org/schema/mule/batch" 
-xmlns:netsuite="http://www.mulesoft.org/schema/mule/netsuite" version="EE-3.6.1" 
+xmlns:netsuite="http://www.mulesoft.org/schema/mule/netsuite" version="EE-3.6.2" 
     xmlns="http://www.mulesoft.org/schema/mule/core" 
     xmlns:data-mapper="http://www.mulesoft.org/schema/mule/ee/data-mapper" 
     xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" 
