@@ -45,11 +45,12 @@ http://www.mulesoft.org/schema/mule/json http://www.mulesoft.org/schema/mule/jso
 import com.netsuite.webservices.platform.core.RecordRef;
 import com.netsuite.webservices.platform.core.types.RecordType;
 
-ref = new RecordRef();
-ref.setType(RecordType.SUBSIDIARY);
-ref.setInternalId(${netsuite.subsidiaryId});
+subsdiaryRef = new RecordRef();
+subsdiaryRef.setInternalId(${netsuite.subsidiaryId});
+payload.put('subsidiary', subsdiaryRef);
 
-payload.put('subsidiary', ref);]]></expression-component>
+
+]]></expression-component>
                                 <netsuite:add-record config-ref="Netsuite" recordType="CUSTOMER" doc:name="add Customer">
                                     <netsuite:attributes ref="#[payload]"/>
                                 </netsuite:add-record>
@@ -87,7 +88,6 @@ for(product : payload) {
 
 	// reference to subsidiary
 	ref = new RecordRef();
-	ref.setType(RecordType.SUBSIDIARY);
 	ref.setInternalId(${netsuite.subsidiaryId});
 	subList.add(ref);
 
@@ -132,7 +132,6 @@ if(payload['OpportunityLineItems'].get('records') instanceof HashMap) {
 for(salesOrderItem: payload['OpportunityLineItems'].get('records')) {
    // inventory reference inside NetSuite - what we have in stock
 	itemRef = new RecordRef();
-	itemRef.setType(RecordType.INVENTORY_ITEM);
 	itemRef.setExternalId(salesOrderItem.get('Product2Id'));
 
 	// create sales order item
@@ -150,7 +149,6 @@ itemList.setReplaceAll(true);
 
 // customer reference
 ref = new RecordRef();
-ref.setType(RecordType.CUSTOMER);
 ref.setExternalId(recordVars['idOfCustomerInNetsuite']);
 
 // compose sales order 
