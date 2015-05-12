@@ -40,7 +40,7 @@ import de.schlichtherle.io.FileInputStream;
 public class BusinessLogicIT extends AbstractTemplateTestCase {
 
 	private static final String PATH_TO_TEST_PROPERTIES = "./src/test/resources/mule.test.properties";
-	protected static final String TEMPLATE_NAME = "opportunity-aggregation";
+	protected static final String TEMPLATE_NAME = "opportunity-donotremove";
 	
 	private String TEST_OPPORTUNITY_ID;
 
