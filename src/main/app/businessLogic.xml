@@ -63,20 +63,23 @@ http://www.mulesoft.org/schema/mule/ee/dw http://www.mulesoft.org/schema/mule/ee
                         <dw:transform-message doc:name="OpportunityLineItems To InventoryItems">
                             <dw:set-payload><![CDATA[%dw 1.0
 %output application/java
+%function convertToArray(records) {
+	recordList : records when (records is :array) otherwise [records]
+}
 ---
-using (records = payload.OpportunityLineItems.records)
-[{
-	cost: records.ListPrice,
-	displayName: records.Name,
-	externalId: records.Product2Id,
-	itemId: records.ProductCode,
-	quantityAvailable: records.Quantity,
+convertToArray(payload.OpportunityLineItems.records).recordList map
+{
+	cost: $.ListPrice,
+	displayName: $.Name,
+	externalId: $.Product2Id,
+	itemId: $.ProductCode,
+	quantityAvailable: $.Quantity,
 	subsidiaryList: {
 		recordRef: [{
 			internalId: p('nets.subsidiaryId')
 		}]
 	}
-}]]]></dw:set-payload>
+}]]></dw:set-payload>
                         </dw:transform-message>
                         <netsuite:upsert-list config-ref="Netsuite" recordType="INVENTORY_ITEM" doc:name="upsert inventoryItems">
                             <netsuite:records ref="#[payload]"/>
@@ -88,6 +91,9 @@ using (records = payload.OpportunityLineItems.records)
                 <dw:transform-message doc:name="prepare data to insert Sales Order">
                     <dw:set-payload><![CDATA[%dw 1.0
 %output application/java
+%function convertToArray(records) {
+	recordList : records when (records is :array) otherwise [records]
+}
 ---
 {
 	entity: {
@@ -95,13 +101,13 @@ using (records = payload.OpportunityLineItems.records)
 	},
 	externalId: payload.Id,
 	itemList: {
-		item: using (records = payload.OpportunityLineItems.records) [{
-			amount: records.ListPrice,
+		item: convertToArray(payload.OpportunityLineItems.records).recordList map {
+			amount: $.ListPrice,
 			item: {
-				externalId: records.Product2Id
+				externalId: $.Product2Id
 			},
-			quantity: records.Quantity
-		}],
+			quantity: $.Quantity
+		},
 		replaceAll: true
 	},
 	orderStatus: "PENDING_FULFILLMENT"
