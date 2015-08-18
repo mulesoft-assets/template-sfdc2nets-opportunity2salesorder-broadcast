@@ -1,37 +1,28 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<mule xmlns:json="http://www.mulesoft.org/schema/mule/json" 
-xmlns:batch="http://www.mulesoft.org/schema/mule/batch" 
-xmlns:netsuite="http://www.mulesoft.org/schema/mule/netsuite" version="EE-3.6.2" 
-    xmlns="http://www.mulesoft.org/schema/mule/core" 
-    xmlns:data-mapper="http://www.mulesoft.org/schema/mule/ee/data-mapper" 
-    xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" 
-    xmlns:sfdc="http://www.mulesoft.org/schema/mule/sfdc" 
-    xmlns:spring="http://www.springframework.org/schema/beans" 
-    xmlns:tracking="http://www.mulesoft.org/schema/mule/ee/tracking" 
-    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" 
-    xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-current.xsd
+<mule xmlns:dw="http://www.mulesoft.org/schema/mule/ee/dw"
+	xmlns:batch="http://www.mulesoft.org/schema/mule/batch" xmlns:netsuite="http://www.mulesoft.org/schema/mule/netsuite"
+	version="EE-3.7.1" xmlns="http://www.mulesoft.org/schema/mule/core"
+	xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
+	xmlns:sfdc="http://www.mulesoft.org/schema/mule/sfdc" xmlns:spring="http://www.springframework.org/schema/beans"
+	xmlns:tracking="http://www.mulesoft.org/schema/mule/ee/tracking"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-current.xsd
 http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
 http://www.mulesoft.org/schema/mule/ee/tracking http://www.mulesoft.org/schema/mule/ee/tracking/current/mule-tracking-ee.xsd
 http://www.mulesoft.org/schema/mule/sfdc http://www.mulesoft.org/schema/mule/sfdc/current/mule-sfdc.xsd
-http://www.mulesoft.org/schema/mule/ee/data-mapper http://www.mulesoft.org/schema/mule/ee/data-mapper/current/mule-data-mapper.xsd
 http://www.mulesoft.org/schema/mule/netsuite http://www.mulesoft.org/schema/mule/netsuite/current/mule-netsuite.xsd
 http://www.mulesoft.org/schema/mule/batch http://www.mulesoft.org/schema/mule/batch/current/mule-batch.xsd
-http://www.mulesoft.org/schema/mule/json http://www.mulesoft.org/schema/mule/json/current/mule-json.xsd">
-
-    <data-mapper:config name="Map_To_Map_1" transformationGraphPath="map_to_map_1.grf" doc:name="Map_To_Map_1"/>
-    <data-mapper:config name="OpportunityLineItems_To_InventoryItems" transformationGraphPath="opportunitylineitems_to_inventoryitems.grf" doc:name="OpportunityLineItems_To_InventoryItems"/>
+http://www.mulesoft.org/schema/mule/ee/dw http://www.mulesoft.org/schema/mule/ee/dw/current/dw.xsd">
     <batch:job name="syncOpportunitiesBatch" max-failed-records="-1">
         <batch:process-records>
             <batch:step name="findCustomer" accept-policy="ALL">
                 <logger message="Input Opportunity: #[payload]" level="INFO" doc:name="Logger"/>
-
                 <enricher source="#[payload]" target="#[recordVars['custInNetsuite']]" doc:name="store in custInNetsuite">
                     <processor-chain doc:name="Processor Chain">
                         <netsuite:get-record config-ref="Netsuite" doc:name="get Customer in NetSuite">
                             <netsuite:record-ref externalId="#[payload.Account.Id]" type="CUSTOMER"/>
                         </netsuite:get-record>
-                
-</processor-chain>
+                    </processor-chain>
                 </enricher>
                 <logger message="Customer: #[recordVars.custInNetsuite]" level="INFO" doc:name="Logger"/>
             </batch:step>
@@ -40,21 +31,23 @@ http://www.mulesoft.org/schema/mule/json http://www.mulesoft.org/schema/mule/jso
                     <when expression="#[recordVars['custInNetsuite'] == null]">
                         <enricher source="#[payload.getExternalId()]" target="#[recordVars['idOfCustomerInNetsuite']]" doc:name="store result in idOfCustomerInNetsuite">
                             <processor-chain doc:name="Processor Chain">
-                                <data-mapper:transform config-ref="Map_To_Map_1" doc:name="Account To Customer"/>
-                                <expression-component doc:name="data to create Customer"><![CDATA[import java.util.HashMap;
-import com.netsuite.webservices.platform.core.RecordRef;
-import com.netsuite.webservices.platform.core.types.RecordType;
-
-subsdiaryRef = new RecordRef();
-subsdiaryRef.setInternalId(${netsuite.subsidiaryId});
-payload.put('subsidiary', subsdiaryRef);
-
-
-]]></expression-component>
+                                <dw:transform-message doc:name="Account to Customer">
+                                    <dw:set-payload><![CDATA[%dw 1.0
+%output application/java
+---
+{
+	companyName: payload.Account.Name,
+	externalId: payload.Account.Id,
+	fax: payload.Account.Fax,
+	phone: payload.Account.Phone,
+	subsidiary: {
+		internalId: p('nets.subsidiaryId')
+	}
+}]]></dw:set-payload>
+                                </dw:transform-message>
                                 <netsuite:add-record config-ref="Netsuite" recordType="CUSTOMER" doc:name="add Customer">
                                     <netsuite:attributes ref="#[payload]"/>
                                 </netsuite:add-record>
-
                             </processor-chain>
                         </enricher>
                     </when>
@@ -65,106 +58,57 @@ payload.put('subsidiary', subsdiaryRef);
                 <logger message="Customer ID: #[recordVars.idOfCustomerInNetsuite]" level="INFO" doc:name="Logger"/>
             </batch:step>
             <batch:step name="upsertInventoryItems" accept-policy="ALL">
-
                 <enricher source="#[payload]" target="#[recordVars['itemsUpsertResult']]" doc:name="upsert invertoryItems">
                     <processor-chain doc:name="Processor Chain">
-                        <data-mapper:transform config-ref="OpportunityLineItems_To_InventoryItems" doc:name="OpportunityLineItems To InventoryItems"/>
-                        <expression-component doc:name="prepare data to insert inventory items"><![CDATA[import java.util.ArrayList;
-import java.util.HashMap;
-
-import com.netsuite.webservices.platform.core.RecordRefList;
-import com.netsuite.webservices.platform.core.RecordRef;
-import com.netsuite.webservices.platform.core.types.RecordType;
-
-if(payload instanceof HashMap)  {
-	products = new ArrayList();
-    products.add(payload);
-	payload = products;
-}
-
-// add subsidiary to the products
-for(product : payload) {
-		subList = new ArrayList();
-
-	// reference to subsidiary
-	ref = new RecordRef();
-	ref.setInternalId(${netsuite.subsidiaryId});
-	subList.add(ref);
-
-	// subsidiaryList - contains list of references to subsidiaries
-	subsidiaryList = new RecordRefList();
-	subsidiaryList.setRecordRef(subList);
-	
-	product.put("subsidiaryList", subsidiaryList);
-
-}
-
-
-
-
-]]></expression-component>
+                        <dw:transform-message doc:name="OpportunityLineItems To InventoryItems">
+                            <dw:set-payload><![CDATA[%dw 1.0
+%output application/java
+---
+using (records = payload.OpportunityLineItems.records)
+[{
+	cost: records.ListPrice,
+	displayName: records.Name,
+	externalId: records.Product2Id,
+	itemId: records.ProductCode,
+	quantityAvailable: records.Quantity,
+	subsidiaryList: {
+		recordRef: [{
+			internalId: p('nets.subsidiaryId')
+		}]
+	}
+}]]]></dw:set-payload>
+                        </dw:transform-message>
                         <netsuite:upsert-list config-ref="Netsuite" recordType="INVENTORY_ITEM" doc:name="upsert inventoryItems">
                             <netsuite:records ref="#[payload]"/>
                         </netsuite:upsert-list>
                     </processor-chain>
-
                 </enricher>
             </batch:step>
             <batch:step name="createSalesOrderInNetsuite" accept-expression="!(payload is NullPayload)" accept-policy="ALL">
-                <expression-component doc:name="prepare data to insert Sales Order"><![CDATA[import java.util.ArrayList;
-import java.util.HashMap;
-import com.netsuite.webservices.transactions.sales.types.SalesOrderOrderStatus;
-import com.netsuite.webservices.platform.core.RecordRef;
-import com.netsuite.webservices.platform.core.types.RecordType;
-import com.netsuite.webservices.transactions.sales.SalesOrderItem;
-import com.netsuite.webservices.transactions.sales.SalesOrderItemList;
-
-
-//list of all sales order items (products)
-salesOrderItemArrayList = new ArrayList();
-
-if(payload['OpportunityLineItems'].get('records') instanceof HashMap) {
-	products = new ArrayList();
-    products.add(payload['OpportunityLineItems'].get('records'));
-	payload['OpportunityLineItems'].put('records', products);
-}
-
-for(salesOrderItem: payload['OpportunityLineItems'].get('records')) {
-   // inventory reference inside NetSuite - what we have in stock
-	itemRef = new RecordRef();
-	itemRef.setExternalId(salesOrderItem.get('Product2Id'));
-
-	// create sales order item
-	soItem = new SalesOrderItem();
-	soItem.setItem(itemRef);
-	soItem.setQuantity(salesOrderItem.get('Quantity'));
-    soItem.setAmount(salesOrderItem.get('ListPrice'));
-	salesOrderItemArrayList.add(soItem);
-}
-
-// sales order item list
-itemList = new SalesOrderItemList();
-itemList.setItem(salesOrderItemArrayList);
-itemList.setReplaceAll(true);
-
-// customer reference
-ref = new RecordRef();
-ref.setExternalId(recordVars['idOfCustomerInNetsuite']);
-
-// compose sales order 
-map = new HashMap();
-map.put("entity", ref); // customer reference
-map.put("itemList", itemList); // list of sales order items
-map.put("orderStatus", SalesOrderOrderStatus.PENDING_FULFILLMENT);
-map.put("externalId", payload['Id']); // ID of salesforce opportunity
-payload = map;]]></expression-component>
-
-
+                <dw:transform-message doc:name="prepare data to insert Sales Order">
+                    <dw:set-payload><![CDATA[%dw 1.0
+%output application/java
+---
+{
+	entity: {
+		externalId: recordVars.idOfCustomerInNetsuite
+	},
+	externalId: payload.Id,
+	itemList: {
+		item: using (records = payload.OpportunityLineItems.records) [{
+			amount: records.ListPrice,
+			item: {
+				externalId: records.Product2Id
+			},
+			quantity: records.Quantity
+		}],
+		replaceAll: true
+	},
+	orderStatus: "PENDING_FULFILLMENT"
+}]]></dw:set-payload>
+                </dw:transform-message>
                 <netsuite:upsert-record config-ref="Netsuite" recordType="SALES_ORDER" doc:name="upsert Sales Order in Netsuite">
                     <netsuite:attributes ref="#[payload]"/>
-
-
-
                 </netsuite:upsert-record>
                 <logger message="Upserted sales order with internal ID: #[payload.getInternalId()] " level="INFO" doc:name="log Upsert result"/>
             </batch:step>

@@ -54,6 +54,7 @@ public class BusinessLogicIT extends AbstractTemplateTestCase {
 
 	@BeforeClass
 	public static void init() {
+		System.setProperty("mule.test.timeoutSecs", "120");
 
 		System.setProperty("page.size", "100");
 
