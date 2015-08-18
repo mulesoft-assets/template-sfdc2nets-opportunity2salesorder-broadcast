@@ -7,6 +7,7 @@
 package org.mule.templates.integration;
 
 import java.io.File;
+import java.io.FileInputStream;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
@@ -28,9 +29,6 @@ import org.mule.tck.probe.Prober;
 import org.mule.templates.builders.SfdcObjectBuilder;
 import org.mule.templates.test.utils.ListenerProbe;
 import org.mule.templates.test.utils.PipelineSynchronizeListener;
-
-
-import de.schlichtherle.io.FileInputStream;
 
 /**
  * The objective of this class is to validate the correct behavior of the flows
