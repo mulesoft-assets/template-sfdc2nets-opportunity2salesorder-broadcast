@@ -17,18 +17,16 @@ http://www.mulesoft.org/schema/mule/ee/dw http://www.mulesoft.org/schema/mule/ee
         <batch:process-records>
             <batch:step name="findCustomer" accept-policy="ALL">
                 <logger message="Input Opportunity: #[payload]" level="INFO" doc:name="Logger"/>
-                <enricher source="#[payload]" target="#[recordVars['custInNetsuite']]" doc:name="store in custInNetsuite">
+                <enricher source="#[payload.hasNext() ? payload.next() : null]" target="#[recordVars['custInNetsuiteExtId']]" doc:name="store in custInNetsuiteExtId">
                     <processor-chain doc:name="Processor Chain">
-                        <netsuite:get-record config-ref="Netsuite" doc:name="get Customer in NetSuite">
-                            <netsuite:record-ref externalId="#[payload.Account.Id]" type="CUSTOMER"/>
-                        </netsuite:get-record>
+                        <netsuite:query-records config-ref="Netsuite" query="dsql:SELECT externalId FROM CUSTOMER WHERE externalId = '#[payload.Account.Id]'" doc:name="get Customer in NetSuite External ID"/>
                     </processor-chain>
                 </enricher>
                 <logger message="Customer: #[recordVars.custInNetsuite]" level="INFO" doc:name="Logger"/>
             </batch:step>
             <batch:step name="prepareCustomerId" accept-policy="ALL">
                 <choice doc:name="doesCustomerExist">
-                    <when expression="#[recordVars['custInNetsuite'] == null]">
+                    <when expression="#[recordVars['custInNetsuiteExtId'] == null]">
                         <enricher source="#[payload.getExternalId()]" target="#[recordVars['idOfCustomerInNetsuite']]" doc:name="store result in idOfCustomerInNetsuite">
                             <processor-chain doc:name="Processor Chain">
                                 <dw:transform-message doc:name="Account to Customer">
@@ -52,7 +50,7 @@ http://www.mulesoft.org/schema/mule/ee/dw http://www.mulesoft.org/schema/mule/ee
                         </enricher>
                     </when>
                     <otherwise>
-                        <batch:set-record-variable variableName="idOfCustomerInNetsuite" value="#[recordVars.custInNetsuite['externalId']]" doc:name="set idOfCustomerInNetsuite to existing value"/>
+                        <batch:set-record-variable variableName="idOfCustomerInNetsuite" value="#[recordVars.custInNetsuiteExtId.externalId]" doc:name="set idOfCustomerInNetsuite to existing value"/>
                     </otherwise>
                 </choice>
                 <logger message="Customer ID: #[recordVars.idOfCustomerInNetsuite]" level="INFO" doc:name="Logger"/>
