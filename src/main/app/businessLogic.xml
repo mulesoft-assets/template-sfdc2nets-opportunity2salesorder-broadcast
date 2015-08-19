@@ -15,7 +15,7 @@ http://www.mulesoft.org/schema/mule/batch http://www.mulesoft.org/schema/mule/ba
 http://www.mulesoft.org/schema/mule/ee/dw http://www.mulesoft.org/schema/mule/ee/dw/current/dw.xsd">
     <batch:job name="syncOpportunitiesBatch" max-failed-records="-1">
         <batch:process-records>
-            <batch:step name="findCustomer" accept-policy="ALL">
+            <batch:step name="findCustomer">
                 <logger message="Input Opportunity: #[payload]" level="INFO" doc:name="Logger"/>
                 <enricher source="#[payload.hasNext() ? payload.next() : null]" target="#[recordVars['custInNetsuiteExtId']]" doc:name="store in custInNetsuiteExtId">
                     <processor-chain doc:name="Processor Chain">
@@ -24,7 +24,7 @@ http://www.mulesoft.org/schema/mule/ee/dw http://www.mulesoft.org/schema/mule/ee
                 </enricher>
                 <logger message="Customer: #[recordVars.custInNetsuite]" level="INFO" doc:name="Logger"/>
             </batch:step>
-            <batch:step name="prepareCustomerId" accept-policy="ALL">
+            <batch:step name="prepareCustomerId">
                 <choice doc:name="doesCustomerExist">
                     <when expression="#[recordVars['custInNetsuiteExtId'] == null]">
                         <enricher source="#[payload.getExternalId()]" target="#[recordVars['idOfCustomerInNetsuite']]" doc:name="store result in idOfCustomerInNetsuite">
@@ -55,7 +55,7 @@ http://www.mulesoft.org/schema/mule/ee/dw http://www.mulesoft.org/schema/mule/ee
                 </choice>
                 <logger message="Customer ID: #[recordVars.idOfCustomerInNetsuite]" level="INFO" doc:name="Logger"/>
             </batch:step>
-            <batch:step name="upsertInventoryItems" accept-policy="ALL">
+            <batch:step name="upsertInventoryItems">
                 <enricher source="#[payload]" target="#[recordVars['itemsUpsertResult']]" doc:name="upsert invertoryItems">
                     <processor-chain doc:name="Processor Chain">
                         <dw:transform-message doc:name="OpportunityLineItems To InventoryItems">
@@ -85,7 +85,7 @@ convertToArray(payload.OpportunityLineItems.records).recordList map
                     </processor-chain>
                 </enricher>
             </batch:step>
-            <batch:step name="createSalesOrderInNetsuite" accept-expression="!(payload is NullPayload)" accept-policy="ALL">
+            <batch:step name="createSalesOrderInNetsuite" accept-expression="!(payload is NullPayload)">
                 <dw:transform-message doc:name="prepare data to insert Sales Order">
                     <dw:set-payload><![CDATA[%dw 1.0
 %output application/java
