@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <mule xmlns:dw="http://www.mulesoft.org/schema/mule/ee/dw"
 	xmlns:batch="http://www.mulesoft.org/schema/mule/batch" xmlns:netsuite="http://www.mulesoft.org/schema/mule/netsuite"
-	version="EE-3.7.1" xmlns="http://www.mulesoft.org/schema/mule/core"
+	version="EE-3.7.2" xmlns="http://www.mulesoft.org/schema/mule/core"
 	xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
 	xmlns:sfdc="http://www.mulesoft.org/schema/mule/sfdc" xmlns:spring="http://www.springframework.org/schema/beans"
 	xmlns:tracking="http://www.mulesoft.org/schema/mule/ee/tracking"

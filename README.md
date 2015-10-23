@@ -160,13 +160,14 @@ In order to use this Mule Anypoint Template you need to configure properties (Cr
 + poll.frequencyMillis `60000`
 + poll.startDelayMillis `0`
 + watermark.defaultExpression `YESTERDAY` or `2015-04-01T19:40:27.000Z`
++ page.size `200`
 
 
 #### Salesforce Connector configuration
 + sfdc.username `bob.dylan@orga`
 + sfdc.password `DylanPassword123`
 + sfdc.securityToken `avsfwCUl7apQs56Xq2AKi3X`
-+ sfdc.url `https://login.salesforce.com/services/Soap/u/31.0`
++ sfdc.url `https://login.salesforce.com/services/Soap/u/32.0`
 
 #### NetSuite Connector configuration
 + nets.email `email@example.com`
