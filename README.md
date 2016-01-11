@@ -39,13 +39,11 @@ The application not only retrieves the data pertaining to the Opportunities that
 This decreases the number of queries made to SalesForce to 1 per poll cycle.
 Therefore, we filter out propagation of Opportunities that are not 'Closed Won', don't have an Account or at least one Product associated with it.
 
-In the Batch Job's *Process* phase, the Customer corresponding to the source Opportunity's Account will be searched for in NetSuite. We use the *externalId* property of objects in NetSuite to match their SalesForce counterpart. 
-This property should contain *Id* property of SalesForce object.
+In the Batch Job's *Process* phase, the Customer corresponding to the source Opportunity's Account will be searched for in NetSuite. We use the *companyName* property of objects in NetSuite to match their SalesForce counterpart. 
+This property should contain *Name* property of SalesForce object.
 If the Customer does not exist in NetSuite, it will be created in the next step, so that we have it ready to reference it later to Sales Order.
 Then all the products (Opportunity Line Items) associated with the Opportunity are upserted into NetSuite as InventoryItem objects.
 Last step upserts the Sales Order object referencing the Customer and Items created/updated in the previous steps.
-
-Finally during the *On Complete* stage the Anypoint Template will log output statistics data into the console.
 
 # Considerations <a name="considerations"/>
 
@@ -159,7 +157,7 @@ In order to use this Mule Anypoint Template you need to configure properties (Cr
 ### Application configuration
 + poll.frequencyMillis `60000`
 + poll.startDelayMillis `0`
-+ watermark.defaultExpression `YESTERDAY` or `2015-04-01T19:40:27.000Z`
++ watermark.defaultExpression `2015-04-01T19:40:27.000Z`
 + page.size `200`
 
 
@@ -173,7 +171,8 @@ In order to use this Mule Anypoint Template you need to configure properties (Cr
 + nets.email `email@example.com`
 + nets.password `password`
 + nets.account `TSTDRVxxxxxxx`
-+ nets.roleId `9`  
++ nets.roleId `9`
++ nets.applicationId `77EBCBD6-AF9F-11E5-BF7F-FEFF819CDC9F`
 + nets.subsidiaryId `1`
 
 # API Calls <a name="apicalls"/>
@@ -204,7 +203,6 @@ Functional aspect of the Template is implemented in this XML, directed by one fl
 
 1. During the Input stage the Template will query the Salesforce instance for existing opportunities (including associated Account and Products) that match the filter criteria.
 2. During the Process stage, each SFDC opportunity will be upserted to NetSuite system. Before this is possible, the template will query the NetSuite if Customer and the Items exists and if not, it makes sure these objects are created.
-Finally during the On Complete stage the Template will log batch statistics into the console.
 
 
 

@@ -8,12 +8,17 @@ package org.mule.templates.integration;
 
 import java.io.File;
 import java.io.FileInputStream;
+import java.util.Map;
 import java.util.Properties;
 
 import org.junit.Rule;
+import org.mule.MessageExchangePattern;
+import org.mule.api.MuleEvent;
 import org.mule.api.config.MuleProperties;
+import org.mule.processor.chain.SubflowInterceptingChainLifecycleWrapper;
 import org.mule.tck.junit4.FunctionalTestCase;
 import org.mule.tck.junit4.rule.DynamicPort;
+import org.mule.transport.NullPayload;
 
 /**
  * This is the base test class for Anypoint Templates integration tests.
@@ -72,6 +77,18 @@ public abstract class AbstractTemplateTestCase extends FunctionalTestCase {
 		properties.put(MuleProperties.APP_HOME_DIRECTORY_PROPERTY, graphFile.getAbsolutePath());
 
 		return properties;
+	}
+	
+	@SuppressWarnings("unchecked")
+	protected Map<String, Object> invokeRetrieveFlow(SubflowInterceptingChainLifecycleWrapper flow,	Object payload) throws Exception {
+		MuleEvent event = flow.process(getTestEvent(payload, MessageExchangePattern.REQUEST_RESPONSE));
+
+		Object resultPayload = event.getMessage().getPayload();
+		if (resultPayload instanceof NullPayload) {
+			return null;
+		} else {
+			return (Map<String, Object>) resultPayload;
+		}
 	}
 
 }

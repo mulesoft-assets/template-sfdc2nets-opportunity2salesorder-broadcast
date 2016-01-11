@@ -3,7 +3,7 @@
 <mule xmlns:netsuite="http://www.mulesoft.org/schema/mule/netsuite"
 	xmlns:sfdc="http://www.mulesoft.org/schema/mule/sfdc" xmlns:context="http://www.springframework.org/schema/context"
 	xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
-	xmlns:spring="http://www.springframework.org/schema/beans" version="EE-3.7.2"
+	xmlns:spring="http://www.springframework.org/schema/beans"
 	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
 	xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-current.xsd
 http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
@@ -20,7 +20,7 @@ http://www.mulesoft.org/schema/mule/netsuite http://www.mulesoft.org/schema/mule
         <reconnect count="3"/>
     </sfdc:config>
     
-    <netsuite:config-login-authentication name="Netsuite" email="${nets.email}" password="${nets.password}" account="${nets.account}" roleId="${nets.roleId}" receiveTimeout="300000" doc:name="Netsuite">
+    <netsuite:config-login-authentication name="Netsuite" email="${nets.email}" password="${nets.password}" account="${nets.account}" roleId="${nets.roleId}" receiveTimeout="300000" applicationId="${nets.applicationId}" doc:name="Netsuite">
         <reconnect-forever frequency="10000"/>
     </netsuite:config-login-authentication>
 

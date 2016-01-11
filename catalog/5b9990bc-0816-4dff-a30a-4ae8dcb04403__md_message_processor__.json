@@ -1,0 +1,16 @@
+{
+    "inputMessageMetadata": {
+        "messagePayload": {
+            "connectorName": "#_custom_mule_metadata_type_#",
+            "typeId": "Opportunity"
+        }
+    },
+    "outputMessageMetadata": {
+        "messagePayload": {
+            "connectorName": "Netsuite",
+            "typeId": "SALES_ORDER"
+        }
+    },
+    "id": "5b9990bc-0816-4dff-a30a-4ae8dcb04403",
+    "version": "5.2.0.0"
+}
