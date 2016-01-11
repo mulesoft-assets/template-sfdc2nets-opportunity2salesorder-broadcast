@@ -14,6 +14,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
@@ -21,7 +23,6 @@ import org.junit.BeforeClass;
 import org.junit.Rule;
 import org.junit.Test;
 import org.mule.MessageExchangePattern;
-import org.mule.api.MuleEvent;
 import org.mule.processor.chain.SubflowInterceptingChainLifecycleWrapper;
 import org.mule.tck.junit4.rule.DynamicPort;
 import org.mule.tck.probe.PollingProber;
@@ -37,6 +38,7 @@ import org.mule.templates.test.utils.PipelineSynchronizeListener;
  */
 public class BusinessLogicIT extends AbstractTemplateTestCase {
 
+	private static final Logger LOGGER = LogManager.getLogger(BusinessLogicIT.class);
 	private static final String PATH_TO_TEST_PROPERTIES = "./src/test/resources/mule.test.properties";
 	protected static final String TEMPLATE_NAME = "opportunity-donotremove";
 	
@@ -114,11 +116,10 @@ public class BusinessLogicIT extends AbstractTemplateTestCase {
 		//retrieve NetSuite SO based on SFDC Opportunity ID (as externalId)
 		SubflowInterceptingChainLifecycleWrapper flow = getSubFlow("retrieveSalesOrderFromNetsuite");
 		flow.initialise();
-		MuleEvent response = flow.process(getTestEvent(TEST_OPPORTUNITY_ID, MessageExchangePattern.REQUEST_RESPONSE));
-				
+		
 		//assertions
-		Map<String, Object> payload = (Map<String,Object>) response.getMessage().getPayload();	
-		Assert.assertNotNull(payload.get("internalId"));
+		Map<String, Object> payload = invokeRetrieveFlow(flow, TEST_OPPORTUNITY_ID);	
+		Assert.assertNotNull("Sales Order representing migrated Opportunity was not found", payload);
 	}
 
 	/**
@@ -127,7 +128,7 @@ public class BusinessLogicIT extends AbstractTemplateTestCase {
 	 * @throws Exception
 	 */
 	private void updateSFDCOpportunity(String Id) throws Exception {
-		System.err.println("Updating the test opportunity!");
+		LOGGER.info("Updating the test opportunity!");
 		
 		Map<String, Object> opp = SfdcObjectBuilder.anOpportunity()
 				.with("Id",Id)
@@ -142,7 +143,7 @@ public class BusinessLogicIT extends AbstractTemplateTestCase {
 		flow.initialise();
 		flow.process(getTestEvent(oppList, MessageExchangePattern.REQUEST_RESPONSE));
 		
-		System.err.println("test opportunity (Id: " + TEST_OPPORTUNITY_ID +  ") updated!");
+		LOGGER.info("test opportunity (Id: " + TEST_OPPORTUNITY_ID +  ") updated!");
 	}
 	
 	private void waitForPollToRun() {

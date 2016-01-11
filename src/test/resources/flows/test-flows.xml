@@ -1,14 +1,15 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
-<mule xmlns:netsuite="http://www.mulesoft.org/schema/mule/netsuite"
+<mule xmlns:metadata="http://www.mulesoft.org/schema/mule/metadata" xmlns:dw="http://www.mulesoft.org/schema/mule/ee/dw" xmlns:netsuite="http://www.mulesoft.org/schema/mule/netsuite"
 	xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:sfdc="http://www.mulesoft.org/schema/mule/sfdc"
 	xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
-	xmlns:spring="http://www.springframework.org/schema/beans" version="EE-3.7.2"
+	xmlns:spring="http://www.springframework.org/schema/beans"
 	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
 	xsi:schemaLocation="http://www.mulesoft.org/schema/mule/sfdc http://www.mulesoft.org/schema/mule/sfdc/current/mule-sfdc.xsd
 http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-current.xsd
 http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
-http://www.mulesoft.org/schema/mule/netsuite http://www.mulesoft.org/schema/mule/netsuite/current/mule-netsuite.xsd">
+http://www.mulesoft.org/schema/mule/netsuite http://www.mulesoft.org/schema/mule/netsuite/current/mule-netsuite.xsd
+http://www.mulesoft.org/schema/mule/ee/dw http://www.mulesoft.org/schema/mule/ee/dw/current/dw.xsd">
     <sub-flow name="updateSFDCOpportunity">
         <sfdc:update config-ref="Salesforce" type="Opportunity" doc:name="Salesforce">
             <sfdc:objects ref="#[payload]"/>
@@ -53,9 +54,25 @@ http://www.mulesoft.org/schema/mule/netsuite http://www.mulesoft.org/schema/mule
         <logger message="Sales Order deleted from NetSuite!" level="INFO" doc:name="Logger"/>
     </sub-flow>
     <sub-flow name="retrieveSalesOrderFromNetsuite">
-        <netsuite:get-record config-ref="Netsuite" doc:name="Netsuite">
-            <netsuite:record-ref externalId="#[payload]" type="SALES_ORDER"/>
-        </netsuite:get-record>
+        <dw:transform-message metadata:id="68daf8cc-1337-41d9-940e-d248cce9e844" doc:name="Create search criteria">
+            <dw:set-payload><![CDATA[%dw 1.0
+%output application/java
+---
+{
+	externalIdString: {
+		operator: "IS",
+		searchValue: payload
+	},
+	recordType: {
+		operator: "IS",
+		searchValue: "SalesOrder"
+	}
+} as :object {class: "com.netsuite.webservices.platform.common.TransactionSearchBasic"}]]></dw:set-payload>
+        </dw:transform-message>
+        <enricher source="#[payload.hasNext() ? payload.next() : NullPayload.getInstance()]" target="#[payload]" doc:name="Message Enricher">
+            <netsuite:search config-ref="Netsuite" searchRecord="TRANSACTION_BASIC" doc:name="Netsuite"/>
+        </enricher>
+        <logger message="Retrieved Sales Order: #[payload]" level="INFO" doc:name="Logger"/>
     </sub-flow>
 
 </mule>
