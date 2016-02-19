@@ -16,7 +16,7 @@ http://www.mulesoft.org/schema/mule/ee/dw http://www.mulesoft.org/schema/mule/ee
     <batch:job name="syncOpportunitiesBatch" max-failed-records="-1">
         <batch:process-records>
             <batch:step name="findCustomer">
-                <logger message="Input Opportunity: #[payload]" level="INFO" doc:name="Logger"/>
+
                 <enricher source="#[payload.hasNext() ? payload.next()[&quot;externalId&quot;] : null]" target="#[payload.customerExternalId]" doc:name="enrich payload with Customer ExternalId">
                     <processor-chain doc:name="Processor Chain">
                         <dw:transform-message metadata:id="e3dfa24f-cba0-408b-b740-a2926f9688ce" doc:name="Create search criteria">
@@ -35,7 +35,7 @@ http://www.mulesoft.org/schema/mule/ee/dw http://www.mulesoft.org/schema/mule/ee
                         <netsuite:search config-ref="Netsuite" doc:name="Search for customer in Netsuite" searchRecord="CUSTOMER"/>
                     </processor-chain>
                 </enricher>
-                <logger message="Customer external ID: #[payload.customerExternalId]" level="INFO" doc:name="Logger"/>
+                <logger message="Customer external ID: #[payload.customerExternalId]" level="INFO" doc:name="Log customer search result"/>
             </batch:step>
             <batch:step name="createCustomerIfDoesNotExistStep" accept-expression="#[payload.customerExternalId == null]">
 				<enricher source="#[payload.getExternalId()]" target="#[payload.customerExternalId]" doc:name="enrich payload with Customer InternalId">
@@ -61,7 +61,7 @@ http://www.mulesoft.org/schema/mule/ee/dw http://www.mulesoft.org/schema/mule/ee
 						</netsuite:add-record>
 					</processor-chain>
 				</enricher>
-                <logger message="Created Customer external ID: #[payload.customerExternalId]" level="INFO" doc:name="Logger"/>
+                <logger message="Created Customer external ID: #[payload.customerExternalId]" level="INFO" doc:name="Log customer if does not exist result"/>
             </batch:step>
             <batch:step name="upsertInventoryItems">
             	<enricher source="#[payload]" target="#[recordVars['itemsUpsertResult']]" doc:name="upsert invertoryItems">
@@ -84,15 +84,15 @@ payload.OpportunityLineItems map
 	}
 }]]></dw:set-payload>
                 </dw:transform-message>
-                <netsuite:upsert-list config-ref="Netsuite" recordType="INVENTORY_ITEM" doc:name="upsert inventoryItems">
+                <netsuite:upsert-list config-ref="Netsuite" recordType="INVENTORY_ITEM" doc:name="Upsert inventoryItems">
                     <netsuite:records ref="#[payload]"/>
                 </netsuite:upsert-list>
-                <logger message="Upserted inventory items: #[payload]" level="INFO" doc:name="Logger"/>
+                <logger message="Upserted inventory items: #[payload]" level="INFO" doc:name="Log upsert inventoryItems result"/>
             	</processor-chain>
                 </enricher>
             </batch:step>
             <batch:step name="upsertSalesOrderInNetsuite" accept-expression="payload != null">
-                <dw:transform-message doc:name="prepare data to insert Sales Order" metadata:id="5b9990bc-0816-4dff-a30a-4ae8dcb04403">
+                <dw:transform-message doc:name="Prepare data to insert Sales Order" metadata:id="5b9990bc-0816-4dff-a30a-4ae8dcb04403">
                     <dw:set-payload><![CDATA[%dw 1.0
 %output application/java
 ---
@@ -116,15 +116,15 @@ payload.OpportunityLineItems map
 	orderStatus: "PENDING_FULFILLMENT"
 }]]></dw:set-payload>
                 </dw:transform-message>
-                <netsuite:upsert-record config-ref="Netsuite" recordType="SALES_ORDER" doc:name="upsert Sales Order in Netsuite">
+                <netsuite:upsert-record config-ref="Netsuite" recordType="SALES_ORDER" doc:name="Upsert Sales Order in Netsuite">
                     <netsuite:attributes ref="#[payload]"/>
                 </netsuite:upsert-record>
-                <logger message="Upserted Sales Order with internal ID: #[payload.getInternalId()] " level="INFO" doc:name="log Upsert result"/>
+                <logger message="Upserted Sales Order with internal ID: #[payload.getInternalId()] " level="INFO" doc:name="Log upsert result"/>
             </batch:step>
         </batch:process-records>
     </batch:job>
     <flow doc:description="This flow is the entry point to the Kick business logic.  This flow should control the direction of the application, and it should be called by the different endpoints that your Kick exposes to trigger it." name="mainFlow" processingStrategy="synchronous">
-        <batch:execute name="syncOpportunitiesBatch" doc:name="syncOpportunitiesBatch"/>
+        <batch:execute name="syncOpportunitiesBatch" doc:name="Call syncOpportunitiesBatch"/>
 
         <exception-strategy doc:name="Reference Exception Strategy" ref="defaultChoiceExceptionStrategy"/>
     </flow>
