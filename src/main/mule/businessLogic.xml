@@ -1,0 +1,192 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:netsuite="http://www.mulesoft.org/schema/mule/netsuite"
+	xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xmlns:batch="http://www.mulesoft.org/schema/mule/batch"
+	xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/batch http://www.mulesoft.org/schema/mule/batch/current/mule-batch.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd
+http://www.mulesoft.org/schema/mule/netsuite http://www.mulesoft.org/schema/mule/netsuite/current/mule-netsuite.xsd">
+
+	<flow name="businessLogicFlow" doc:id="8759532e-79b7-4789-990c-dc8e162bfd67">
+		<batch:job jobName="migrateOpportunitiesBatch" doc:id="204892ae-0d97-4326-beae-310c8d52b7a6"
+			blockSize="${page.size}">
+			<batch:process-records>
+				<batch:step name="findCustomer" doc:id="89713774-362a-4e92-9bdc-41e31802bf38">
+					<ee:transform doc:name="Create search criteria"
+						doc:id="0b6d07c5-54c9-4ea1-af73-81fdf717b38a">
+						<ee:variables>
+							<ee:set-variable variableName="customerRequest"><![CDATA[%dw 2.0
+output application/java
+---
+{
+	basic: {
+		companyName: {
+			operator: "IS",
+			searchValue: payload.Account.Name
+		}
+	}
+} as Object {class: "org.mule.module.netsuite.extension.api.CustomerSearch"}]]></ee:set-variable>
+						</ee:variables>
+					</ee:transform>
+					<netsuite:search pageSize="100"
+						doc:name="Search for customer in Netsuite" doc:id="3c61c142-fdad-4b60-b0cf-424eac8e8fcc"
+						config-ref="NetSuite_Config" key="CUSTOMER" target="customerData">
+						<netsuite:search-record><![CDATA[#[vars.customerRequest]]]></netsuite:search-record>
+					</netsuite:search>
+					<ee:transform doc:name="Extend payload about externalId"
+						doc:id="63d5477f-1ae5-4981-a874-22c737b59fba">
+						<ee:message>
+							<ee:set-payload><![CDATA[%dw 2.0
+output application/java
+---
+payload ++ {
+	customerExternalId: vars.customerData[0].externalId
+}]]></ee:set-payload>
+						</ee:message>
+					</ee:transform>
+					<logger level="INFO" doc:name="Log extended payload"
+						doc:id="3bde4c45-1ce4-4d5f-96f1-d3494609319c"
+						message="Payload with customerExternalId #[output application/json --- payload]" />
+				</batch:step>
+				<batch:step name="createCustomerIfDoesNotExistStep"
+					doc:id="3292c695-ae09-4ce4-ae4b-3efc2c95fe6a" acceptExpression="#[payload.customerExternalId == null]">
+					<ee:transform doc:name="Create Customer Request"
+						doc:id="72844c6d-138d-4cb5-949a-fb3508e13de7">
+						<ee:message>
+							<ee:set-payload><![CDATA[%dw 2.0
+output application/java
+---
+{
+	companyName: payload.Account.Name,
+	externalId: payload.Account.Id,
+	fax: payload.Account.Fax,
+	phone: payload.Account.Phone,
+	subsidiary: {
+		internalId: p("nets.subsidiaryId"),
+		"type": 'SUBSIDIARY'
+	}
+}]]></ee:set-payload>
+						</ee:message>
+						<ee:variables>
+							<ee:set-variable variableName="currentRecord"><![CDATA[%dw 2.0
+output application/java
+---
+payload]]></ee:set-variable>
+						</ee:variables>
+					</ee:transform>
+					<netsuite:add-record recordType="CUSTOMER"
+						doc:name="add Customer" doc:id="30745efd-d082-4dc8-988e-9496c32dc389"
+						config-ref="NetSuite_Config" target="newCustomer" />
+					<ee:transform doc:name="Extend payload about internalId"
+						doc:id="f6a5a43f-fec0-4249-b2f2-e1bc867e5f02">
+						<ee:message>
+							<ee:set-payload><![CDATA[%dw 2.0
+output application/java
+---
+vars.currentRecord ++ {
+	customerExternalId: vars.newCustomer.externalId
+}]]></ee:set-payload>
+						</ee:message>
+					</ee:transform>
+					<logger level="INFO" doc:name="Log extended payload" doc:id="3b6193a6-4275-4fa4-a152-05219625a6f3" message="Payload with customerExternalId #[output application/json --- payload]" />
+				</batch:step>
+				<batch:step name="upsertInventoryItems" doc:id="78a74ab4-9b91-416d-985a-acda2ac377eb">
+					<ee:transform doc:name="OpportunityLineItems To InventoryItems"
+						doc:id="e3e7cb21-db36-4375-bb5d-46b121b861c7">
+						<ee:message>
+						</ee:message>
+						<ee:variables>
+							<ee:set-variable variableName="opportunityItems"><![CDATA[%dw 2.0
+output application/java
+---
+payload.OpportunityLineItems map
+{
+	cost: $.ListPrice,
+	displayName: $.Name,
+	externalId: $.Product2Id,
+	itemId: $.ProductCode,
+	quantityAvailable: $.Quantity,
+	subsidiaryList: {
+		recordRef: [{
+			internalId: p("nets.subsidiaryId")
+		}]
+	}
+}]]></ee:set-variable>
+						</ee:variables>
+					</ee:transform>
+					<netsuite:upsert-list doc:name="Upsert inventoryItems"
+						doc:id="b88be237-d687-47e3-9415-8ca7be04a856" config-ref="NetSuite_Config"
+						recordType="INVENTORY_ITEM" target="itemsUpsertResult">
+						<netsuite:record-maps><![CDATA[#[vars.opportunityItems]]]></netsuite:record-maps>
+					</netsuite:upsert-list>
+					<logger level="INFO" doc:name="Log upsert inventoryItems result"
+						doc:id="72f37c42-cac3-48f7-acb0-da9696088888"
+						message="Upserted inventory items: #[output application/json --- vars.itemsUpsertResult]" />
+				</batch:step>
+				<batch:step name="upsertSalesOrderInNetsuite" doc:id="b74ca55b-d48e-4f4e-a8e8-41b7494ecbb1">
+					<ee:transform doc:name="Prepare data to insert Sales Order"
+						doc:id="df9b69d9-91ad-4bc3-9ad5-07e56db02d33">
+						<ee:message>
+							<ee:set-payload><![CDATA[%dw 2.0
+output application/java
+---
+{
+	entity: {
+		externalId: payload.customerExternalId,
+		"type": 'CUSTOMER'
+	},
+	externalId: payload.Id,
+	itemList: {
+		item: payload.OpportunityLineItems map {
+			amount: $.ListPrice,
+			item: {
+				externalId: $.Product2Id,
+				"type": 'INVENTORY_ITEM'
+			},
+			quantity: $.Quantity
+		},
+		replaceAll: true
+	},
+	orderStatus: "PENDING_FULFILLMENT"
+}]]></ee:set-payload>
+						</ee:message>
+					</ee:transform>
+					<netsuite:upsert-record recordType="SALES_ORDER"
+						doc:name="Upsert record" doc:id="c5703545-7a5f-4d2a-8e86-14d0a3833986"
+						config-ref="NetSuite_Config" />
+					<logger level="INFO" doc:name="Log upsert result"
+						doc:id="28edc3e0-d1eb-4dd5-9316-0d7a710f9536"
+						message="Upserted Sales Order with internal ID: #[output application/json --- payload]" />
+				</batch:step>
+			</batch:process-records>
+			<batch:on-complete>
+				<ee:transform doc:name="Prepare migration result"
+					doc:id="c84b4bc4-5a65-41c1-9d0c-f1ebd3d8db7a">
+					<ee:message>
+						<ee:set-payload><![CDATA[%dw 2.0
+output text/plain
+---
+"Migration Report: \n"
+
+++ "\n Time [milliseconds]: " 		++ payload.elapsedTimeInMillis
+++ "\n Total Records: "				++ payload.totalRecords
+++ "\n Successful Records: "		++ payload.successfulRecords
+++ "\n Failed Records: "			++ payload.failedRecords
+++ "\n Loaded Records: "			++ payload.loadedRecords
+++ "\n Processed Records: " 		++ payload.processedRecords]]></ee:set-payload>
+					</ee:message>
+				</ee:transform>
+				<logger level="INFO" doc:name="Migration process has finished!"
+					doc:id="b7575d38-7dbd-4602-9186-1bbb25234896" message="Migration process has finished: #[payload]" />
+
+			</batch:on-complete>
+
+		</batch:job>
+	</flow>
+
+</mule>
+
+
+        
