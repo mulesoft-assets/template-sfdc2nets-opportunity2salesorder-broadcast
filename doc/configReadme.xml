@@ -1,0 +1,82 @@
+<?xml version="1.0"?>
+<configuration>
+	<placeholders>
+		<placeholder id="template_name">Salesforce Opportunity to NetSuite Sales Order Broadcast</placeholder>
+	</placeholders>
+	<sections>
+		<section id="use_case">
+As a Salesforce admin I want to synchronize Opportunities in Salesforce that are in the 'Closed Won' stage to NetSuite. In NetSuite, these opportunities become Sales Orders. Each time there is a new Opportunity that matches the criteria defined or if there is a change in an already existing one in SalesForce, the integration application will detect the changes and it will insert/update the Sales Order in NetSuite. This template can serve as a part of the Quote to Cash process for an Enterprise.
+
+The application has been built in a manner wherein it can not only be used as an example, but it can also be used to establish a starting point on which you can build out your integration use case.
+
+As implemented, this Anypoint Template leverages the [Batch Module](http://www.mulesoft.org/documentation/display/current/Batch+Processing) 
+
+The batch job is divided into *Process* and *On Complete* stages.
+
+The integration is triggered by a scheduler mechanism defined in the flow. The application queries for newest Salesforce updates/creations using a filter criteria and executes the batch job.
+The application not only retrieves the data pertaining to the Opportunities that were modified/created, but also information about the related Account and Products. The reason being, Sales Order in NetSuite requires references to related Customer and Items in order to be created. 
+Therefore, we filter out propagation of Opportunities that are not 'Closed Won', don't have an Account or at least one Product associated with it.
+
+In the Batch Job's *Process* phase, the Customer corresponding to the source Opportunity's Account will be searched for in NetSuite. We use the *companyName* property of objects in NetSuite to match their SalesForce counterpart. 
+This property should contain *Name* property of SalesForce object.
+If the Customer does not exist in NetSuite, it will be created in the next step, so that we have it ready to reference it later to Sales Order.
+Then all the products (Opportunity Line Items) associated with the Opportunity are upserted into NetSuite as InventoryItem objects.
+Last step upserts the Sales Order object referencing the Customer and Items created/updated in the previous steps.
+		</section>
+		<section id="considerations">
+<![CDATA[
+To make this Anypoint Template run, there are certain preconditions that must be considered. All of them deal with the preparations in both source and destination systems, that must be made in order for all to run smoothly. **Failing to do so could lead to unexpected behavior of the template.**
+]]>
+		</section>
+		<section id="nets_dst">
+<![CDATA[
+Customer must be assigned to subsidiary. In this template, this is done statically and you must configure the property file with subsidiary *internalId* that is already in the system. You can find out this number by entering 'subsidiaries' 
+into the NetSuite search field and selecting 'Page - Subsidiaries'. When you click on the 'View' next to the subsidiary chosen, you will see the ID in the URL line. Please, use this Id to populate *nets.subsidiaryId* property in the property file.
+]]>
+		</section>
+		<section id="running_on_cloudhub">
+<![CDATA[
+Once your app is all set up and started, there is no need to do anything else. Every time a opportunity is created or modified, it will be automatically synchronised to NetSuite as long as it is 'Closed Won' and has products associated.
+]]>
+		</section>
+		<section id="application_configuration">
+		<![CDATA[
++ page.size `200`
++ scheduler.frequency `10000`
++ scheduler.start.delay `100`
+
+#### Watermarking default last query timestamp
++ watermark.default.expression `2015-04-01T19:40:27.000Z`
+
+#### Salesforce Connector configuration
++ sfdc.username `bob.dylan@orga`
++ sfdc.password `DylanPassword123`
++ sfdc.securityToken `avsfwCUl7apQs56Xq2AKi3X`
+
+#### NetSuite Connector configuration
++ nets.email `email@example.com`
++ nets.password `password`
++ nets.account `TSTDRVxxxxxxx`
++ nets.roleId `9`
++ nets.appId `77EBCBD6-AF9F-11E5-BF7F-FEFF819CDC9F`
++ nets.subsidiaryId `1`
+]]>
+		</section>
+		<section id="api_calls">
+		<![CDATA[
+Salesforce imposes limits on the number of API Calls that can be made. However, in this template, only one call per scheduler cycle is done to retrieve all the information required.
+]]>
+		</section>
+		<section id="default_business_logic_xml">
+		<![CDATA[
+Functional aspect of the Template is implemented in this XML, directed by one flow that will schedule for Salesforce Opportunity creations/updates. The several message processors constitute the actions that fully implement the logic of this Template.
+During the Process stage, each SFDC opportunity will be upserted to NetSuite system. Before this is possible, the template will query the NetSuite if Customer and the Items exists and if not, it makes sure these objects are created.
+]]>
+		</section>
+		<section id="default_endpoints_xml">
+		<![CDATA[
+This file is conformed by a Flow containing the Scheduler that will periodically query Salesforce for updated/created Opportunities that meet the defined criteria in the query. And then executing the batch job process with the query results.
+]]>
+		</section>
+	</sections>
+</configuration>
