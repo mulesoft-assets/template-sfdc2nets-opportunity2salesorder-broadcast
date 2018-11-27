@@ -9,11 +9,11 @@
 This template is subject to the conditions of the <a href="https://s3.amazonaws.com/templates-examples/AnypointTemplateLicense.pdf">MuleSoft License Agreement</a>. Review the terms of the license before downloading and using this template. You can use this template for free with the Mule Enterprise Edition, CloudHub, or as a trial in Anypoint Studio. 
 # Use Case
 <!-- Use Case (start) -->
-As a Salesforce admin I want to synchronize Opportunities in Salesforce that are in the 'Closed Won' stage to NetSuite. In NetSuite, these opportunities become Sales Orders. Each time there is a new Opportunity that matches the criteria defined or if there is a change in an already existing one in SalesForce, the integration application will detect the changes and it will insert/update the Sales Order in NetSuite. This template can serve as a part of the Quote to Cash process for an Enterprise.
+As a Salesforce admin I want to synchronize Opportunities in Salesforce that are in the 'Closed Won' stage to NetSuite. In NetSuite, these opportunities become Sales Orders. Each time there is a new Opportunity that matches the criteria defined or if there is a change in an already existing one in SalesForce, the integration application will detect the changes and it will inserts or updates the Sales Order in NetSuite. This template can serve as a part of the Quote to Cash process for an Enterprise.
 
 The application has been built in a manner wherein it can not only be used as an example, but it can also be used to establish a starting point on which you can build out your integration use case.
 
-As implemented, this Anypoint Template leverages the [Batch Module](http://www.mulesoft.org/documentation/display/current/Batch+Processing) 
+As implemented, this template leverages the Mule batch module 
 
 The batch job is divided into *Process* and *On Complete* stages.
 
@@ -34,7 +34,7 @@ Last step upserts the Sales Order object referencing the Customer and Items crea
 <!-- Default Considerations (end) -->
 
 <!-- Considerations (start) -->
-To make this Anypoint Template run, there are certain preconditions that must be considered. All of them deal with the preparations in both source and destination systems, that must be made in order for all to run smoothly. **Failing to do so could lead to unexpected behavior of the template.**
+To make this template run, there are certain preconditions that must be considered. All of them deal with the preparations in both source and destination systems, that must be made for the template to run smoothly. **Failing to do so could lead to unexpected behavior of the template.**
 <!-- Considerations (end) -->
 
 
@@ -193,7 +193,7 @@ This file provides the configuration for connectors and configuration properties
 ## businessLogic.xml
 <!-- Default Business Logic XML (start) -->
 Functional aspect of the Template is implemented in this XML, directed by one flow that will schedule for Salesforce Opportunity creations/updates. The several message processors constitute the actions that fully implement the logic of this Template.
-During the Process stage, each SFDC opportunity will be upserted to NetSuite system. Before this is possible, the template will query the NetSuite if Customer and the Items exists and if not, it makes sure these objects are created.<!-- Default Business Logic XML (end) -->
+During the Process stage, each Salesforce opportunity will be upserted to NetSuite system. Before this is possible, the template queries the NetSuite if Customer and the Items exists and if not, it makes sure these objects are created.<!-- Default Business Logic XML (end) -->
 
 <!-- Business Logic XML (start) -->
 
