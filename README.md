@@ -2,6 +2,17 @@
 # Anypoint Template: Salesforce Opportunity to NetSuite Sales Order Broadcast	
 
 <!-- Header (start) -->
+Broadcast changes or created opportunities from Salesforce to NetSuite as Sales Orders in real time. You can use this template to implement a quote to cash process in an enterprise. 
+
+The detection criteria and fields to move are configurable. Additional systems can be added to be notified of the changes. Real time synchronization is achieved either by rapid polling of Salesforce or Outbound Notifications that reduce the number of API calls. This template uses Mule batching and watermarking capabilities to capture only recent changes, and to efficiently process large numbers of records.
+
+![cb54a332-dac6-4fbb-9ef0-2d3d7394fce4-image.png](https://exchange2-file-upload-service-kprod.s3.us-east-1.amazonaws.com:443/cb54a332-dac6-4fbb-9ef0-2d3d7394fce4-image.png)
+
+![f5417c2d-fe3e-43a2-9433-2afd0a9f1b15-image.png](https://exchange2-file-upload-service-kprod.s3.us-east-1.amazonaws.com:443/f5417c2d-fe3e-43a2-9433-2afd0a9f1b15-image.png)
+
+![48d760e2-1a23-4cf4-9e27-94193f46ac54-image.png](https://exchange2-file-upload-service-kprod.s3.us-east-1.amazonaws.com:443/48d760e2-1a23-4cf4-9e27-94193f46ac54-image.png)
+
+![a2c81f9a-87cd-45dc-bd3d-7d84d0daeceb-image.png](https://exchange2-file-upload-service-kprod.s3.us-east-1.amazonaws.com:443/a2c81f9a-87cd-45dc-bd3d-7d84d0daeceb-image.png)
 
 <!-- Header (end) -->
 
@@ -9,23 +20,16 @@
 This template is subject to the conditions of the <a href="https://s3.amazonaws.com/templates-examples/AnypointTemplateLicense.pdf">MuleSoft License Agreement</a>. Review the terms of the license before downloading and using this template. You can use this template for free with the Mule Enterprise Edition, CloudHub, or as a trial in Anypoint Studio. 
 # Use Case
 <!-- Use Case (start) -->
-As a Salesforce admin I want to synchronize Opportunities in Salesforce that are in the 'Closed Won' stage to NetSuite. In NetSuite, these opportunities become Sales Orders. Each time there is a new Opportunity that matches the criteria defined or if there is a change in an already existing one in SalesForce, the integration application will detect the changes and it will inserts or updates the Sales Order in NetSuite. This template can serve as a part of the Quote to Cash process for an Enterprise.
+A Salesforce administrator wants to synchronize opportunities in Salesforce that are in the 'Closed Won' stage to NetSuite. In NetSuite, these opportunities become Sales Orders. Each time there is a new opportunity that matches the criteria defined, or if there is a change in an existing one in SalesForce, the integration application detects the changes and inserts or updates the Sales Order in NetSuite. This template can serve as a part of the quote to cash process for an Enterprise.
 
-The application has been built in a manner wherein it can not only be used as an example, but it can also be used to establish a starting point on which you can build out your integration use case.
+This application can be used as an example or as a starting point upon which you can build your integration's use case. 
 
-As implemented, this template leverages the Mule batch module 
+This template leverages the Mule batch module, which is divided into *Process* and *On Complete* stages. After the integration starts from a scheduler, the application queries for the latest Salesforce updates or creates, and when found, executes the batch job. The application retrieves modified or created opportunities, and also information about a related account and products. This is done because to create a NetSuite sales order, the sales order requires references to a customer and items. Thereafter, the application filters out opportunities that are not 'Closed Won' and don't have an account or at least one product associated with it.
 
-The batch job is divided into *Process* and *On Complete* stages.
-
-The integration is triggered by a scheduler mechanism defined in the flow. The application queries for newest Salesforce updates/creations using a filter criteria and executes the batch job.
-The application not only retrieves the data pertaining to the Opportunities that were modified/created, but also information about the related Account and Products. The reason being, Sales Order in NetSuite requires references to related Customer and Items in order to be created. 
-Therefore, we filter out propagation of Opportunities that are not 'Closed Won', don't have an Account or at least one Product associated with it.
-
-In the Batch Job's *Process* phase, the Customer corresponding to the source Opportunity's Account will be searched for in NetSuite. We use the *companyName* property of objects in NetSuite to match their SalesForce counterpart. 
-This property should contain *Name* property of SalesForce object.
-If the Customer does not exist in NetSuite, it will be created in the next step, so that we have it ready to reference it later to Sales Order.
-Then all the products (Opportunity Line Items) associated with the Opportunity are upserted into NetSuite as InventoryItem objects.
-Last step upserts the Sales Order object referencing the Customer and Items created/updated in the previous steps.
+In the batch job's *Process* phase, the customer corresponding to the source opportunity's account is located in NetSuite. The application uses the *companyName* property of objects in NetSuite to match a SalesForce counterpart. 
+This property should contain the *Name* property of a SalesForce object.
+If a customer does not exist in NetSuite, the application creates the customer, so that it's ready to reference later in the sales order.
+Then all the products (opportunity line items) associated with the opportunity are upserted into NetSuite as InventoryItem objects. The last step upserts the Sales Order object referencing the customer and items created or updated in the previous steps.
 <!-- Use Case (end) -->
 
 # Considerations
@@ -34,14 +38,12 @@ Last step upserts the Sales Order object referencing the Customer and Items crea
 <!-- Default Considerations (end) -->
 
 <!-- Considerations (start) -->
-To make this template run, there are certain preconditions that must be considered. All of them deal with the preparations in both source and destination systems, that must be made for the template to run smoothly. **Failing to do so could lead to unexpected behavior of the template.**
+To make this template run, there are certain preconditions that must be considered. All of them deal with the preparations in both source and destination systems, that must be made for the template to run smoothly. Failing to do so can lead to unexpected behavior of the template.
 <!-- Considerations (end) -->
-
-
 
 ## Salesforce Considerations
 
-Here's what you need to know about Salesforce to get this template to work:
+To get this template to work:
 
 - Where can I check that the field configuration for my Salesforce instance is the right one? See: <a href="https://help.salesforce.com/HTViewHelpDoc?id=checking_field_accessibility_for_a_particular_field.htm&language=en_US">Salesforce: Checking Field Accessibility for a Particular Field</a>.
 - Can I modify the Field Access Settings? How? See: <a href="https://help.salesforce.com/HTViewHelpDoc?id=modifying_field_access_settings.htm&language=en_US">Salesforce: Modifying Field Access Settings</a>.
@@ -57,9 +59,10 @@ exceptionMessage='Account.Phone, Account.Rating, Account.RecordTypeId,
 Account.ShippingCity
 ^
 ERROR at Row:1:Column:486
-No such column 'RecordTypeId' on entity 'Account'. If you are attempting to 
-use a custom field, be sure to append the '__c' after the custom field name. 
-Reference your WSDL or the describe call for the appropriate names.'
+No such column 'RecordTypeId' on entity 'Account'. If you are 
+attempting to use a custom field, be sure to append the '__c' 
+after the custom field name. Reference your WSDL or the describe 
+call for the appropriate names.'
 ]
 row='1'
 column='486'
@@ -67,21 +70,13 @@ column='486'
 ]
 ```
 
-
-
-
-
-
 ## NetSuite Considerations
 
 
 ### As a Data Destination
 
-Customer must be assigned to subsidiary. In this template, this is done statically and you must configure the property file with subsidiary *internalId* that is already in the system. You can find out this number by entering 'subsidiaries' 
-into the NetSuite search field and selecting 'Page - Subsidiaries'. When you click on the 'View' next to the subsidiary chosen, you will see the ID in the URL line. Please, use this Id to populate *nets.subsidiaryId* property in the property file.
-
-
-
+A customer must be assigned to a subsidiary. In this template, this is done statically and you must configure the property file with subsidiary *internalId* that is already in the system. You can find this number by entering 'subsidiaries' 
+in the NetSuite search field and selecting 'Page - Subsidiaries'. When you click the 'View' next to the subsidiary chosen, you see the ID in the URL line. Use this ID to populate *nets.subsidiaryId* property in the property file.
 
 # Run it!
 Simple steps to get this template running.
@@ -115,13 +110,13 @@ In Studio, click the Exchange X icon in the upper left of the taskbar, log in wi
 ### Running on Studio
 After you import your template into Anypoint Studio, follow these steps to run it:
 
-+ Locate the properties file `mule.dev.properties`, in src/main/resources.
-+ Complete all the properties required as per the examples in the "Properties to Configure" section.
-+ Right click the template project folder.
-+ Hover your mouse over `Run as`.
-+ Click `Mule Application (configure)`.
-+ Inside the dialog, select Environment and set the variable `mule.env` to the value `dev`.
-+ Click `Run`.
+1. Locate the properties file `mule.dev.properties`, in src/main/resources.
+2. Complete all the properties required per the examples in the "Properties to Configure" section.
+3. Right click the template project folder.
+4. Hover your mouse over `Run as`.
+5. Click `Mule Application (configure)`.
+6. Inside the dialog, select Environment and set the variable `mule.env` to the value `dev`.
+7. Click `Run`.
 <!-- Running on Studio (start) -->
 
 <!-- Running on Studio (end) -->
@@ -133,7 +128,7 @@ Update the properties in one of the property files, for example in mule.prod.pro
 ## Running on CloudHub
 When creating your application in CloudHub, go to Runtime Manager > Manage Application > Properties to set the environment variables listed in "Properties to Configure" as well as the mule.env value.
 <!-- Running on Cloudhub (start) -->
-Once your app is all set up and started, there is no need to do anything else. Every time a opportunity is created or modified, it will be automatically synchronised to NetSuite as long as it is 'Closed Won' and has products associated.
+After your app is  started, there is no need to do anything else. Each time an opportunity is created or modified, it is automatically synchronized to NetSuite as long as it is 'Closed Won' and has products associated.
 <!-- Running on Cloudhub (end) -->
 
 ### Deploying a Template in CloudHub
@@ -151,14 +146,14 @@ To use this template, configure properties such as credentials, configurations, 
 + scheduler.start.delay `100`
 
 #### Watermarking default last query timestamp
-+ watermark.default.expression `2015-04-01T19:40:27.000Z`
++ watermark.default.expression `2019-04-01T19:40:27.000Z`
 
-#### Salesforce Connector configuration
+#### Salesforce Connector Configuration
 + sfdc.username `bob.dylan@orga`
 + sfdc.password `DylanPassword123`
 + sfdc.securityToken `avsfwCUl7apQs56Xq2AKi3X`
 
-#### NetSuite Connector configuration
+#### NetSuite Connector Configuration
 + nets.email `email@example.com`
 + nets.password `password`
 + nets.account `TSTDRVxxxxxxx`
@@ -184,7 +179,8 @@ This brief guide provides a high level understanding of how this template is bui
 
 ## config.xml
 <!-- Default Config XML (start) -->
-This file provides the configuration for connectors and configuration properties. Only change this file to make core changes to the connector processing logic. Otherwise, all parameters that can be modified should instead be in a properties file, which is the recommended place to make changes.<!-- Default Config XML (end) -->
+This file provides the configuration for connectors and configuration properties. Only change this file to make core changes to the connector processing logic. Otherwise, all parameters that can be modified should instead be in a properties file, which is the recommended place to make changes.
+<!-- Default Config XML (end) -->
 
 <!-- Config XML (start) -->
 
@@ -192,8 +188,8 @@ This file provides the configuration for connectors and configuration properties
 
 ## businessLogic.xml
 <!-- Default Business Logic XML (start) -->
-Functional aspect of the Template is implemented in this XML, directed by one flow that will schedule for Salesforce Opportunity creations/updates. The several message processors constitute the actions that fully implement the logic of this Template.
-During the Process stage, each Salesforce opportunity will be upserted to NetSuite system. Before this is possible, the template queries the NetSuite if Customer and the Items exists and if not, it makes sure these objects are created.<!-- Default Business Logic XML (end) -->
+The functional aspect of this template is implemented in this XM file, directed by a flow that schedules the Salesforce opportunity creates or updates. The several message processors constitute the actions that fully implement the logic of this template. During the Process stage, each Salesforce opportunity is upserted to the NetSuite system. Before this is possible, the template queries the NetSuite if a customer and items exist and if not, it creates these objects.
+<!-- Default Business Logic XML (end) -->
 
 <!-- Business Logic XML (start) -->
 
@@ -201,7 +197,8 @@ During the Process stage, each Salesforce opportunity will be upserted to NetSui
 
 ## endpoints.xml
 <!-- Default Endpoints XML (start) -->
-This file is conformed by a Flow containing the Scheduler that will periodically query Salesforce for updated/created Opportunities that meet the defined criteria in the query. And then executing the batch job process with the query results.<!-- Default Endpoints XML (end) -->
+This file is a flow containing the scheduler that periodically queries Salesforce for updated or created opportunities that meet the defined criteria in the query. This file executes the batch job process with the query results.
+<!-- Default Endpoints XML (end) -->
 
 <!-- Endpoints XML (start) -->
 
@@ -209,7 +206,8 @@ This file is conformed by a Flow containing the Scheduler that will periodically
 
 ## errorHandling.xml
 <!-- Default Error Handling XML (start) -->
-This file handles how your integration reacts depending on the different exceptions. This file provides error handling that is referenced by the main flow in the business logic.<!-- Default Error Handling XML (end) -->
+This file handles how your integration reacts depending on the different exceptions. This file provides error handling that is referenced by the main flow in the business logic.
+<!-- Default Error Handling XML (end) -->
 
 <!-- Error Handling XML (start) -->
 
