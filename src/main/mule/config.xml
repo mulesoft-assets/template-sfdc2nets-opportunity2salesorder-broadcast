@@ -1,16 +1,15 @@
 <?xml version='1.0' encoding='utf-8'?>
 <mule xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:netsuite="http://www.mulesoft.org/schema/mule/netsuite" xmlns:os="http://www.mulesoft.org/schema/mule/os" xmlns:salesforce="http://www.mulesoft.org/schema/mule/salesforce" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd http://www.mulesoft.org/schema/mule/os http://www.mulesoft.org/schema/mule/os/current/mule-os.xsd http://www.mulesoft.org/schema/mule/salesforce http://www.mulesoft.org/schema/mule/salesforce/current/mule-salesforce.xsd http://www.mulesoft.org/schema/mule/netsuite http://www.mulesoft.org/schema/mule/netsuite/current/mule-netsuite.xsd">
 
+	<global-property name="mule.env" value="dev" doc:name="Global Property" />
 	<os:object-store name="watermarkStore" persistent="false" doc:name="Object store" />
 
 	<configuration-properties file="common.properties" doc:id="7584fb1d-2fa2-445a-b949-eed01f5785bd" doc:name="Configuration properties" />
 	<configuration-properties file="mule.${mule.env}.properties" doc:id="86e0eb9d-cf2e-451a-9e09-b4afdf13e0e9" doc:name="Configuration properties" />
-	<configuration-properties file="mule-artifact.properties" doc:id="7cbfff42-875b-4697-88d2-6e7f1f0b0eca" doc:name="Configuration properties" />	
 	<salesforce:sfdc-config name="Salesforce_Config" doc:id="f06ab5f9-742f-40a2-9765-28a76ef8c873" doc:name="Salesforce Config">
 		<salesforce:basic-connection password="${sfdc.password}" securityToken="${sfdc.securityToken}" username="${sfdc.username}" />
 	</salesforce:sfdc-config>
 	<netsuite:config name="NetSuite_Config" doc:id="5a71f941-35ae-4520-85ec-e1c37fcc14a8" doc:name="NetSuite Config">
 		<netsuite:login-authentication-connection account="${nets.account}" applicationId="${nets.appId}" email="${nets.email}" password="${nets.password}" roleId="${nets.roleId}" />
 	</netsuite:config>
-	<global-property name="mule.env" value="dev" doc:name="Global Property" />
 </mule>
