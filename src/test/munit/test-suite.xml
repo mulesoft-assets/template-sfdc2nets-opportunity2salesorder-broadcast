@@ -2,7 +2,6 @@
 
 <mule xmlns:scripting="http://www.mulesoft.org/schema/mule/scripting"
 	xmlns:netsuite="http://www.mulesoft.org/schema/mule/netsuite" xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core"
-	xmlns:salesforce="http://www.mulesoft.org/schema/mule/salesforce"
 	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:munit="http://www.mulesoft.org/schema/mule/munit"
 	xmlns:munit-tools="http://www.mulesoft.org/schema/mule/munit-tools"
 	xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
@@ -11,7 +10,6 @@ http://www.mulesoft.org/schema/mule/scripting http://www.mulesoft.org/schema/mul
 		http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
 		http://www.mulesoft.org/schema/mule/munit http://www.mulesoft.org/schema/mule/munit/current/mule-munit.xsd
 		http://www.mulesoft.org/schema/mule/munit-tools  http://www.mulesoft.org/schema/mule/munit-tools/current/mule-munit-tools.xsd
-http://www.mulesoft.org/schema/mule/salesforce http://www.mulesoft.org/schema/mule/salesforce/current/mule-salesforce.xsd
 http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd
 http://www.mulesoft.org/schema/mule/netsuite http://www.mulesoft.org/schema/mule/netsuite/current/mule-netsuite.xsd">
 	<munit:config name="test-suite.xml" doc:name="MUnit configuration" />
@@ -58,6 +56,7 @@ var uniqueName = "TestRecord" ++ randomInt(10000)
 	<munit:test name="test-suite-businesslogicFlowTest"
 		description="Test" doc:id="372e91b3-4516-48a5-8b77-d62814dfec22">
 		<munit:execution>
+			<flow-ref doc:name="queryFlow" doc:id="bf634cc2-2496-436d-a390-8b2d16e0f7dc" name="queryFlow"/>
 			<ee:transform doc:name="Tests records" doc:id="4103ee54-6ed5-4371-94d3-e16a5af7dd1b">
 				<ee:message>
 					<ee:set-payload><![CDATA[%dw 2.0
@@ -83,6 +82,7 @@ output application/java
 				message="Assert of account name" />
 			<munit-tools:assert-that doc:name="Assert of migrated inventory item" doc:id="16391d39-fded-4501-a9f4-4c649fb1d838" expression="#[sizeOf(vars.migratedInventoryItem)]" is="#[MunitTools::greaterThan(0)]" message="Assert of migrated inventory item" />
 			<munit-tools:assert-that doc:name="Assert of migrated sales order" doc:id="8e7d1e5c-8e72-4a7c-9c09-0eaebffb6a2d" expression="#[sizeOf(vars.migratedSalesOrder)]" is="#[MunitTools::greaterThan(0)]" message="Assert of migrated sales order" />
+			<munit-tools:verify-call doc:name="Verify call to query from salesforce" doc:id="1d020870-c57e-4a4e-b9da-bcf6e2f94885" processor="salesforce:query" times="1"/>
 			
 			</munit:validation>
 	</munit:test>
