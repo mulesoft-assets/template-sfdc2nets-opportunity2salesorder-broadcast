@@ -10,6 +10,6 @@
 		<salesforce:basic-connection password="${sfdc.password}" securityToken="${sfdc.securityToken}" username="${sfdc.username}" />
 	</salesforce:sfdc-config>
 	<netsuite:config name="NetSuite_Config" doc:id="5a71f941-35ae-4520-85ec-e1c37fcc14a8" doc:name="NetSuite Config">
-		<netsuite:login-authentication-connection account="${nets.account}" applicationId="${nets.appId}" email="${nets.email}" password="${nets.password}" roleId="${nets.roleId}" />
+		<netsuite:login-authentication-connection account="${nets.account}" applicationId="${nets.appId}" email="${nets.email}" password="${nets.password}" roleId="${nets.roleId}" readTimeout="${nets.readTimeout}" connectionTimeout="${nets.connectionTimeout}" />
 	</netsuite:config>
 </mule>
