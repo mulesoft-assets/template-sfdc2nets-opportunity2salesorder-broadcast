@@ -8,7 +8,7 @@
     </parent>
     <artifactId>template-sfdc2nets-opportunity2salesorder-broadcast</artifactId>
     <packaging>mule-application</packaging>
-    <version>2.1.1</version>
+    <version>2.1.2-SNAPSHOT</version>
     <name>template-sfdc2nets-opportunity2salesorder-broadcast</name>
      <build>
         <plugins>
@@ -99,4 +99,4 @@
         </repository>
     </repositories>
    
-<scm><connection>scm:git:git@github.com:mulesoft/template-sfdc2nets-opportunity2salesorder-broadcast.git</connection><developerConnection>scm:git:git@github.com:mulesoft/template-sfdc2nets-opportunity2salesorder-broadcast.git</developerConnection><url>https://github.com/mulesoft/template-sfdc2nets-opportunity2salesorder-broadcast</url><tag>v2.1.1</tag></scm></project>
+<scm><connection>scm:git:git@github.com:mulesoft/template-sfdc2nets-opportunity2salesorder-broadcast.git</connection><developerConnection>scm:git:git@github.com:mulesoft/template-sfdc2nets-opportunity2salesorder-broadcast.git</developerConnection><url>https://github.com/mulesoft/template-sfdc2nets-opportunity2salesorder-broadcast</url><tag>HEAD</tag></scm></project>
